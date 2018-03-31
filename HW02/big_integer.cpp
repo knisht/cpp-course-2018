@@ -234,8 +234,20 @@ void big_integer::change_sign(big_integer& a)
 template<typename Lambda>
 big_integer big_integer::logic_operation(big_integer a, big_integer b, Lambda&& lambda) const
 {
-    while (a.number.size()<b.number.size()) a.number.push_back(0);
-    while (a.number.size()>b.number.size()) b.number.push_back(0);
+    if (a.number.size() < b.number.size()) {
+        size_t old_size = a.number.size();
+	a.number.resize(b.number.size());
+	for (size_t i = old_size; i < a.number.size(); i++){
+	   a.number[i] = 0;
+	}
+    }
+    if (a.number.size() > b.number.size()) {
+        size_t old_size = b.number.size();
+	b.number.resize(a.number.size());
+	for (size_t i = old_size; i < b.number.size(); i++){
+            b.number[i] = 0;
+	   } 
+    }
     if (a.sign==-1) {
         for (size_t i = 0; i<a.number.size(); i++)
             a.number[i] = ~a.number[i];
