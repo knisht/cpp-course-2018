@@ -4,3 +4,4 @@ BreakBeforeBraces: Linux
 AllowShortIfStatementsOnASingleLine: false
 AccessModifierOffset: -4
 AlwaysBreakTemplateDeclarations: true
+ColumnLimit: 0

@@ -1,23 +1,24 @@
 #include "big_integer.h"
+#include "utils/vector.h"
 
 #include <algorithm>
 #include <climits>
 #include <cstring>
 #include <stdexcept>
+#include <vector>
 
 using ui = unsigned int;
 using ull = uintmax_t;
+using digit_vector = Vector;
 
 big_integer::big_integer()
+    : number(1, 0), sign(0)
 {
-    number.push_back(0);
-    sign = 0;
 }
 
 big_integer::big_integer(big_integer const &rhs)
+    : number(rhs.number), sign(rhs.sign)
 {
-    number = rhs.number;
-    sign = rhs.sign;
 }
 
 big_integer::big_integer(int a)
@@ -46,11 +47,23 @@ big_integer::big_integer(std::string const &str)
     normalize(*this);
 }
 
+big_integer::big_integer(big_integer &&other)
+    : number(other.number), sign(other.sign)
+{
+}
+
 big_integer::~big_integer() = default;
 
 big_integer &big_integer::operator=(big_integer const &other)
 {
     number = other.number;
+    sign = other.sign;
+    return *this;
+}
+
+big_integer &big_integer::operator=(big_integer &&other)
+{
+    number = std::move(other.number);
     sign = other.sign;
     return *this;
 }
@@ -288,7 +301,7 @@ big_integer &big_integer::operator^=(big_integer const &rhs)
 big_integer &big_integer::operator<<=(int rhs)
 {
     ui delta = 0;
-    std::vector<ui> result(number.size() + ui_cast((rhs + 31) / 32));
+    digit_vector result(number.size() + ui_cast((rhs + 31) / 32));
     size_t j = 0;
     while (rhs >= int(bits_in_base)) {
         rhs -= (bits_in_base);
@@ -320,7 +333,7 @@ big_integer &big_integer::operator>>=(int rhs)
     ui true_rhs = ui_cast(rhs);
     if (sgn(*this) == -1)
         *this -= 1;
-    std::vector<ui> result;
+    digit_vector result;
     size_t start = 0;
     while (rhs >= int(bits_in_base)) {
         start = true_rhs / (bits_in_base);
@@ -644,6 +657,7 @@ int sgn(big_integer const &a) { return a.sign; }
 
 void big_integer::normalize(big_integer &a)
 {
+
     while ((a.number.back() == 0) && (a.number.size() > 1))
         a.number.pop_back();
     if (a.number.size() == 1 && a.number[0] == 0)
