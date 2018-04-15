@@ -9582,7 +9582,6 @@ const char* TypedTestCasePState::VerifyRegisteredTestNames(
     fflush(stderr);
     posix::Abort();
   }
-
   return registered_tests;
 }
 

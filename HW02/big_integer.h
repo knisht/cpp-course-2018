@@ -57,10 +57,10 @@ struct big_integer {
 private:
     using ui = unsigned int;
     using ull = uintmax_t;
-    const ull base = static_cast<unsigned long long>(UINT_MAX) + 1;
-    const ui logic_base = UINT_MAX;
-    const ui bits_in_base = sizeof(ui) * 8;
     using digit_vector = Vector;
+    static const ull base = static_cast<unsigned long long>(UINT_MAX) + 1;
+    const ui logic_base = UINT_MAX;
+    static constexpr ui bits_in_base = sizeof(ui) * 8;
 
     digit_vector number;
     int sign;

@@ -2,26 +2,21 @@
 #define BIGINT_VECTOR_H
 
 #include <cstddef>
+#include <cstring>
 
 class Vector
 {
 private:
     using elem_type = unsigned int;
     using size_type = size_t;
-    struct pool_ref {
-        size_type capacity;
-        elem_type *data;
-    };
-    static constexpr size_t small_object_len =
-        sizeof(pool_ref) / sizeof(elem_type);
 
 public:
     Vector();
     Vector(size_type new_size, elem_type elem = 0);
-    Vector(const Vector &other);
-    Vector &operator=(Vector const &other);
-    Vector(Vector &&other);
-    Vector &operator=(Vector &&other);
+    Vector(const Vector &other) noexcept;
+    Vector &operator=(Vector const &other) noexcept;
+    Vector(Vector &&other) noexcept;
+    Vector &operator=(Vector &&other) noexcept;
     ~Vector();
 
     void push_back(elem_type x);
@@ -29,37 +24,47 @@ public:
 
     inline const elem_type &back() const
     {
-        return (length <= small_object_len)
-                   ? small_object[length - 1]
-                   : long_object.data[length - 1];
+        return (length <= small_object_len) ? small_object[length - 1]
+                                            : long_object.memory_location->data[length - 1];
     }
+
     inline elem_type &back()
     {
-        return (length <= small_object_len)
-                   ? small_object[length - 1]
-                   : long_object.data[length - 1];
+        if (length <= small_object_len)
+            return small_object[length - 1];
+        if (long_object.memory_location->ref_count > 1)
+            change_location(long_object.capacity);
+        return long_object.memory_location->data[length - 1];
     }
+
     inline const elem_type *begin() const
     {
-        return (length <= small_object_len) ? small_object
-                                            : long_object.data;
+        return (length <= small_object_len) ? small_object : long_object.memory_location->data;
     }
+
     inline elem_type *begin()
     {
-        return (length <= small_object_len) ? small_object
-                                            : long_object.data;
+        if (length <= small_object_len)
+            return small_object;
+        if (long_object.memory_location->ref_count > 1)
+            change_location(long_object.capacity);
+        return long_object.memory_location->data;
     }
+
     inline const elem_type *end() const
     {
         return ((length <= small_object_len) ? small_object
-                                             : long_object.data) +
+                                             : long_object.memory_location->data) +
                length;
     }
+
     inline elem_type *end()
     {
-        return ((length <= small_object_len) ? small_object
-                                             : long_object.data) +
-               length;
+        if (length <= small_object_len)
+            return small_object + length;
+        if (long_object.memory_location->ref_count > 1)
+            change_location(long_object.capacity);
+        return long_object.memory_location->data + length;
     }
 
     void resize(size_type new_size, elem_type elem = 0);
@@ -68,25 +73,59 @@ public:
     inline const elem_type &operator[](size_type index) const
     {
         return (length <= small_object_len) ? small_object[index]
-                                            : long_object.data[index];
+                                            : long_object.memory_location->data[index];
     }
     inline elem_type &operator[](size_type index)
     {
-        return (length <= small_object_len) ? small_object[index]
-                                            : long_object.data[index];
+        if (length <= small_object_len)
+            return small_object[index];
+        if (long_object.memory_location->ref_count == 1)
+            return long_object.memory_location->data[index];
+        change_location(long_object.capacity);
+        return long_object.memory_location->data[index];
     }
 
     inline size_type size() const { return length; }
 
 private:
+    struct shared_array {
+        size_type ref_count;
+        elem_type *data;
+
+        shared_array(size_type size);
+        shared_array(const shared_array &other) = delete;
+        shared_array &operator=(shared_array const &other) = delete;
+        shared_array *make_copy(size_t size);
+        static inline shared_array *connect(shared_array *current)
+        {
+            ++current->ref_count;
+            return current;
+        }
+        static inline void disconnect(shared_array *current)
+        {
+            if (!current)
+                return;
+            --current->ref_count;
+        }
+        ~shared_array();
+    };
+
+    struct pool_ref {
+        size_type capacity;
+        shared_array *memory_location;
+    };
+
+    static constexpr size_t small_object_len =
+        sizeof(pool_ref) / sizeof(elem_type);
+
     size_type length;
     union {
         pool_ref long_object;
         elem_type small_object[small_object_len];
     };
 
-    elem_type *allocate(size_type new_capacity);
-    void deallocate(elem_type *dataptr);
+    static elem_type *allocate(size_type new_capacity);
+    static void deallocate(elem_type *dataptr);
     void change_location(size_type new_size);
 };
 
