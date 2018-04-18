@@ -1,6 +1,7 @@
 #ifndef BIG_INTEGER_H
 #define BIG_INTEGER_H
 
+#include "utils/vector.h"
 #include <climits>
 #include <cstddef>
 #include <cstdint>
@@ -10,11 +11,13 @@
 struct big_integer {
     big_integer();
     big_integer(big_integer const &other);
+    big_integer(big_integer &&other);
     big_integer(int a);
     explicit big_integer(std::string const &str);
     ~big_integer();
 
     big_integer &operator=(big_integer const &other);
+    big_integer &operator=(big_integer &&other);
 
     big_integer &operator+=(big_integer const &rhs);
     big_integer &operator-=(big_integer const &rhs);
@@ -54,11 +57,12 @@ struct big_integer {
 private:
     using ui = unsigned int;
     using ull = uintmax_t;
-    const ull base = static_cast<unsigned long long> UINT_MAX + 1;
+    using digit_vector = Vector;
+    static const ull base = static_cast<unsigned long long>(UINT_MAX) + 1;
     const ui logic_base = UINT_MAX;
-    const ui bits_in_base = sizeof(ui) * 8;
+    static constexpr ui bits_in_base = sizeof(ui) * 8;
 
-    std::vector<ui> number;
+    digit_vector number;
     int sign;
 
     template <typename T>
