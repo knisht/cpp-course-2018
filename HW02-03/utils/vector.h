@@ -87,7 +87,7 @@ public:
 private:
     struct shared_array {
         elem_type *data;
-        size_type &ref_count;
+        size_type ref_count;
 
         shared_array(size_type size);
         shared_array(const shared_array &other) = delete;
