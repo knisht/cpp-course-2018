@@ -17,8 +17,11 @@ Vector::shared_array::shared_array(size_type size)
 
 Vector::shared_array::~shared_array()
 {
-    if (ref_count == 0)
-        free(--data);
+    if (ref_count == 0) {
+        for (size_t i = 0; i < sizeof(size_type) / sizeof(elem_type); i++)
+            --data;
+        free(data);
+    }
 }
 
 //vector implementation
