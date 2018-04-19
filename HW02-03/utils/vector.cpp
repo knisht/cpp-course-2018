@@ -8,10 +8,11 @@ using size_type = size_t;
 
 // shared_array implementation
 Vector::shared_array::shared_array(size_type size)
-    : data((elem_type *)(malloc(size * sizeof(elem_type) + 1))), ref_count(*data)
+    : data((elem_type *)(malloc(size * sizeof(elem_type) + sizeof(size_type)))), ref_count(*data)
 {
     ref_count = 0;
-    ++data;
+    for (size_t i = 0; i < sizeof(size_type)/sizeof(elem_type); i++)
+        ++data;
 }
 
 Vector::shared_array::~shared_array()
