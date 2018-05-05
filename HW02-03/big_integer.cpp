@@ -344,9 +344,9 @@ big_integer &big_integer::operator>>=(int rhs)
     }
     for (size_t i = number.size() - 1; (i >= start) && (i < number.size()); i--) {
         ui newdigit =
-            (number[i] >> true_rhs) & ((1 << (bits_in_base - true_rhs)) - 1);
+            (number[i] >> true_rhs) & ((1u << (bits_in_base - true_rhs)) - 1u);
         newdigit |= delta;
-        delta = (number[i] & ((1 << true_rhs) - 1)) << (bits_in_base - true_rhs);
+        delta = (number[i] & ((1u << true_rhs) - 1u)) << (bits_in_base - true_rhs);
         result.push_back(newdigit);
     }
     std::reverse(result.begin(), result.end());
