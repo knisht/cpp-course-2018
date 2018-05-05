@@ -3,26 +3,37 @@
 #include <iostream>
 #include <stdexcept>
 
-using elem_type = unsigned int;
+using value_type = unsigned int;
 using size_type = size_t;
 
 // shared_array implementation
-Vector::shared_array::shared_array(size_type size)
-    : data((elem_type *)(malloc(size * sizeof(elem_type) + sizeof(size_type)))), ref_count(0)
+Vector::shared_array *Vector::shared_array::construct_shared_array(size_type size)
+{
+    void *p = operator new((size) * sizeof(value_type) + sizeof(size_type));
+    shared_array *result = new (p) shared_array();
+    return result;
+}
+
+Vector::shared_array::shared_array()
+    : ref_count(0)
 {
 }
 
 Vector::shared_array::~shared_array()
 {
-    if (ref_count == 0) {
-        free(data);
+}
+
+void Vector::shared_array::destruct_shared_array(shared_array *target)
+{
+    if (target->ref_count == 0) {
+        operator delete(target);
     }
 }
 
 //vector implementation
 Vector::Vector() : length(0), true_ptr(small_object) {}
 
-Vector::Vector(size_type new_size, elem_type elem) : length(new_size)
+Vector::Vector(size_type new_size, value_type elem) : length(new_size)
 {
     if (new_size <= small_object_len) {
         for (size_type i = 0; i < small_object_len; i++) {
@@ -31,7 +42,7 @@ Vector::Vector(size_type new_size, elem_type elem) : length(new_size)
         true_ptr = small_object;
     } else {
         long_object.capacity = new_size;
-        shared_array *temporary = new shared_array(new_size);
+        shared_array *temporary = shared_array::construct_shared_array(new_size);
         long_object.memory_location = shared_array::connect(temporary);
         for (size_type i = 0; i < new_size; i++) {
             long_object.memory_location->data[i] = elem;
@@ -61,7 +72,7 @@ Vector &Vector::operator=(Vector const &other) noexcept
     if (&other == this)
         return *this;
     if (length > small_object_len) {
-        become_free(this->long_object.memory_location);
+        shared_array::disconnect(this->long_object.memory_location);
     }
     Vector tmp(other);
     length = tmp.length;
@@ -96,7 +107,7 @@ Vector::Vector(Vector &&other) noexcept : length(other.length)
 Vector &Vector::operator=(Vector &&other) noexcept
 {
     if (length > small_object_len) {
-        become_free(this->long_object.memory_location);
+        shared_array::disconnect(this->long_object.memory_location);
     }
     length = other.length;
     if (length > small_object_len) {
@@ -116,11 +127,11 @@ Vector &Vector::operator=(Vector &&other) noexcept
 Vector::~Vector()
 {
     if (length > small_object_len) {
-        become_free(long_object.memory_location);
+        shared_array::disconnect(long_object.memory_location);
     }
 }
 
-void Vector::push_back(elem_type x)
+void Vector::push_back(value_type x)
 {
     if (length > small_object_len) {
         if (length == long_object.capacity || long_object.memory_location->ref_count != 1) {
@@ -136,9 +147,9 @@ void Vector::push_back(elem_type x)
     ++length;
 }
 
-elem_type Vector::pop_back()
+value_type Vector::pop_back()
 {
-    elem_type x{};
+    value_type x{};
     if (length > small_object_len) {
         x = long_object.memory_location->data[length - 1];
     } else {
@@ -151,11 +162,11 @@ elem_type Vector::pop_back()
     return x;
 }
 
-void Vector::resize(size_type new_size, elem_type elem)
+void Vector::resize(size_type new_size, value_type elem)
 {
     change_location(new_size);
     if (new_size > small_object_len && new_size > length) {
-        for (elem_type *ptr = long_object.memory_location->data + length;
+        for (value_type *ptr = long_object.memory_location->data + length;
              ptr != long_object.memory_location->data + new_size; ++ptr) {
             *ptr = elem;
         }
@@ -178,29 +189,22 @@ void Vector::change_location(size_type new_size)
         if (length > small_object_len) {
             shared_array *tmp = long_object.memory_location;
             memcpy(small_object, long_object.memory_location->data,
-                   small_object_len * sizeof(elem_type));
+                   small_object_len * sizeof(value_type));
 
-            become_free(tmp);
+            shared_array::disconnect(tmp);
         }
         true_ptr = small_object;
     } else {
-        shared_array *new_data = new shared_array(new_size);
+        shared_array *new_data = shared_array::construct_shared_array(new_size);
         if (length <= small_object_len) {
-            memcpy(new_data->data, small_object, small_object_len * sizeof(elem_type));
+            memcpy(new_data->data, small_object, small_object_len * sizeof(value_type));
         } else {
             memcpy(new_data->data, long_object.memory_location->data,
-                   std::min(length, new_size) * sizeof(elem_type));
-            become_free(long_object.memory_location);
+                   std::min(length, new_size) * sizeof(value_type));
+            shared_array::disconnect(long_object.memory_location);
         }
         long_object.memory_location = shared_array::connect(new_data);
         long_object.capacity = new_size;
         true_ptr = long_object.memory_location->data;
     }
-}
-
-void Vector::become_free(Vector::shared_array *target)
-{
-    shared_array::disconnect(target);
-    if (target && target->ref_count == 0)
-        delete (target);
 }
