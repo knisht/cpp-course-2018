@@ -43,12 +43,15 @@ Vector::Vector(size_type new_size, elem_type elem) : length(new_size)
 Vector::Vector(Vector const &other) noexcept
     : length(other.length)
 {
-    long_object.capacity = other.long_object.capacity;
-    long_object.memory_location = other.long_object.memory_location;
     if (length > small_object_len) {
+        long_object.capacity = other.long_object.capacity;
+        long_object.memory_location = other.long_object.memory_location;
         long_object.memory_location = shared_array::connect(other.long_object.memory_location);
         true_ptr = long_object.memory_location->data;
     } else {
+        for (size_type i = 0; i < small_object_len; ++i) {
+            small_object[i] = other.small_object[i];
+        }
         true_ptr = small_object;
     }
 }
@@ -62,21 +65,32 @@ Vector &Vector::operator=(Vector const &other) noexcept
     }
     Vector tmp(other);
     length = tmp.length;
-    true_ptr = tmp.true_ptr;
-    if (length <= small_object_len)
+    if (length <= small_object_len) {
+        for (size_type i = 0; i < small_object_len; ++i) {
+            small_object[i] = other.small_object[i];
+        }
         true_ptr = small_object;
-    long_object.capacity = tmp.long_object.capacity;
-    long_object.memory_location = tmp.long_object.memory_location;
-    tmp.long_object.memory_location = nullptr;
+    } else {
+        true_ptr = tmp.true_ptr;
+        long_object.memory_location = tmp.long_object.memory_location;
+        long_object.capacity = tmp.long_object.capacity;
+        tmp.long_object.memory_location = nullptr;
+    }
     return *this;
 }
 
-Vector::Vector(Vector &&src) noexcept : length(src.length)
+Vector::Vector(Vector &&other) noexcept : length(other.length)
 {
-    true_ptr = length <= small_object_len ? small_object : src.long_object.memory_location->data;
-    long_object.capacity = src.long_object.capacity;
-    long_object.memory_location = src.long_object.memory_location;
-    src.long_object.memory_location = nullptr;
+    true_ptr = length <= small_object_len ? small_object : other.long_object.memory_location->data;
+    if (length > small_object_len) {
+        long_object.capacity = other.long_object.capacity;
+        long_object.memory_location = other.long_object.memory_location;
+        other.long_object.memory_location = nullptr;
+    } else {
+        for (size_type i = 0; i < small_object_len; ++i) {
+            small_object[i] = other.small_object[i];
+        }
+    }
 }
 
 Vector &Vector::operator=(Vector &&other) noexcept
@@ -85,11 +99,17 @@ Vector &Vector::operator=(Vector &&other) noexcept
         become_free(this->long_object.memory_location);
     }
     length = other.length;
-    long_object.memory_location = other.long_object.memory_location;
-    true_ptr = length <= small_object_len ? small_object : other.true_ptr;
-    if (other.length > small_object_len)
+    if (length > small_object_len) {
+        long_object.capacity = other.long_object.capacity;
+        long_object.memory_location = other.long_object.memory_location;
+        true_ptr = other.true_ptr;
         other.long_object.memory_location = nullptr;
-    long_object.capacity = other.long_object.capacity;
+    } else {
+        for (size_type i = 0; i < small_object_len; ++i) {
+            small_object[i] = other.small_object[i];
+        }
+        true_ptr = small_object;
+    }
     return *this;
 }
 
@@ -107,13 +127,11 @@ void Vector::push_back(elem_type x)
             change_location(long_object.capacity * 2);
         }
         long_object.memory_location->data[length] = x;
+    } else if (length < small_object_len) {
+        small_object[length] = x;
     } else {
-        if (length < small_object_len) {
-            small_object[length] = x;
-        } else {
-            change_location(small_object_len * 4);
-            long_object.memory_location->data[length] = x;
-        }
+        change_location(small_object_len * 4);
+        long_object.memory_location->data[length] = x;
     }
     ++length;
 }
