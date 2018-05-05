@@ -66,31 +66,30 @@ private:
     int sign;
 
     template <typename T>
-    big_integer logic_operation(big_integer a, big_integer b, T &&lambda) const;
+    static big_integer logic_operation(big_integer a, big_integer b, T &&lambda);
 
-    void add_absolute(big_integer &a, big_integer const &b);
-    void sub_absolute(big_integer &a, big_integer const &b);
-    void sub_different(big_integer &a, big_integer const &rhs);
-    void multiply_absolute(big_integer &a, big_integer const &b);
-    big_integer multiply_digit(const big_integer &num, ui x);
+    static void add_absolute(big_integer &a, big_integer const &b);
+    static void sub_absolute(big_integer &a, big_integer const &b);
+    static void sub_different(big_integer &a, big_integer const &rhs);
+    static void multiply_absolute(big_integer &a, big_integer const &b);
+    static big_integer multiply_digit(const big_integer &num, ui x);
 
-    bool cmp_prefix(big_integer const &r, big_integer const &d, ui k, ui m);
-    void difference(big_integer &r, big_integer &d, size_t k, size_t m);
-    ui trial(big_integer const &r, big_integer const &d, ui k, ui m);
-    ui digit_rem(big_integer const &num, ui x);
-    big_integer digit_quot(big_integer const &num, ui x);
-    std::pair<big_integer, big_integer> divide(const big_integer &x,
-                                               const big_integer &y);
-    std::pair<big_integer, big_integer> division(big_integer const &x,
-                                                 big_integer const &y);
+    static bool cmp_prefix(big_integer const &r, big_integer const &d, ui k, ui m);
+    static void difference(big_integer &r, big_integer &d, size_t k, size_t m);
+    static ui trial(big_integer const &r, big_integer const &d, ui k, ui m);
+    static big_integer digit_quotrem(big_integer const &num, ui x, ui &remainder);
+    static std::pair<big_integer, big_integer> divide(const big_integer &x,
+                                                      const big_integer &y);
+    static std::pair<big_integer, big_integer> division(big_integer const &x,
+                                                        big_integer const &y);
 
-    bool zero(const big_integer &a) const;
-    void change_sign(big_integer &a);
-    void normalize(big_integer &a);
+    static bool zero(const big_integer &a);
+    static void change_sign(big_integer &a);
+    static void normalize(big_integer &a);
     template <typename T>
-    inline ui ui_cast(T const &x);
+    static inline ui ui_cast(T const &x);
     template <typename T>
-    inline ull ull_cast(T const &x);
+    static inline ull ull_cast(T const &x);
 };
 
 big_integer operator+(big_integer a, big_integer const &b);

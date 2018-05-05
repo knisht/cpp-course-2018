@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <climits>
 #include <cstring>
-#include <iostream>
 #include <stdexcept>
 #include <vector>
 
@@ -75,7 +74,7 @@ void big_integer::add_absolute(big_integer &a, big_integer const &rhs)
     for (size_t i = 0; i < std::min(a.number.size(), rhs.number.size()); i++) {
         ull test = ull_cast(a.number[i]) + ull_cast(rhs.number[i]) + carry;
         a.number[i] += rhs.number[i] + carry;
-        (test > logic_base) ? carry = 1 : carry = 0;
+        (test > a.logic_base) ? carry = 1 : carry = 0;
     }
     for (size_t i = std::min(a.number.size(), rhs.number.size());
          i < std::max(a.number.size(), rhs.number.size()); i++) {
@@ -83,7 +82,7 @@ void big_integer::add_absolute(big_integer &a, big_integer const &rhs)
             a.number.push_back(rhs.number[i]);
         ull test = ull_cast(a.number[i]) + ull_cast(carry);
         a.number[i] += carry;
-        (test > logic_base) ? carry = 1 : carry = 0;
+        (test > a.logic_base) ? carry = 1 : carry = 0;
     }
     if (carry) {
         a.number.push_back(ui_cast(carry));
@@ -107,35 +106,35 @@ void big_integer::sub_absolute(big_integer &a, big_integer const &rhs)
 {
     ui carry = 0;
 
-    if (a > rhs)
+    digit_vector const *x;
+    digit_vector const *y;
+
+    if (a > rhs) {
         a.sign = 1;
-    else
+        x = &a.number;
+        y = &rhs.number;
+    } else {
         a.sign = -1;
+        x = &rhs.number;
+        y = &a.number;
+    }
     a.number.make_unique();
+
     size_t rhslen = std::min(rhs.number.size(), a.number.size());
+    ui digit, result;
     for (size_t i = 0; i < rhslen; i++) {
-        ui carrytmp = carry;
-        ui digit, other;
-        if (a.sign == 1) {
-            digit = a.number[i];
-            other = rhs.number[i];
-        } else {
-            digit = rhs.number[i];
-            other = a.number[i];
-        }
-        (other + carry > digit) ? carry = 1 : carry = 0;
-        a.number[i] = digit - other - carrytmp;
+        digit = x->operator[](i);
+        result = digit - y->operator[](i) - carry;
+        (result > digit) ? carry = 1 : carry = 0;
+        a.number[i] = result;
     }
 
-    while (carry) {
+    if (carry) {
         if (a.number.size() < rhslen)
             a.number.push_back(0);
-        ui digit;
-        a.sign == 1 ? digit = a.number[rhslen] : digit = rhs.number[rhslen];
-        ui carrytmp = (digit == 0) ? 1 : 0;
-        (digit != 0) ? digit -= carry : digit = logic_base;
+        ui digit = x->operator[](rhslen) - carry;
+        carry = (digit > x->operator[](rhslen));
         a.number[rhslen] = digit;
-        carry = carrytmp;
         rhslen++;
     }
     normalize(a);
@@ -236,7 +235,7 @@ void big_integer::change_sign(big_integer &a) { a.sign *= -1; }
 
 template <typename Lambda>
 big_integer big_integer::logic_operation(big_integer a, big_integer b,
-                                         Lambda &&lambda) const
+                                         Lambda &&lambda)
 {
 
     a.number.make_unique();
@@ -272,7 +271,7 @@ big_integer big_integer::logic_operation(big_integer a, big_integer b,
     }
     if (zero(a))
         a.sign = 0;
-    if (a.number[a.number.size() - 1] > (logic_base >> 1)) {
+    if (a.number[a.number.size() - 1] > (a.logic_base >> 1)) {
         for (size_t i = 0; i < a.number.size(); i++)
             a.number[i] = ~a.number[i];
         a += 1;
@@ -444,8 +443,9 @@ std::string to_string(big_integer const &a)
     int sign = tmp.sign;
     abs(tmp);
     while (tmp > 0) {
-        str += std::to_string(tmp.digit_rem(tmp, 10));
-        tmp = tmp.digit_quot(tmp, 10);
+        ui rem;
+        tmp = big_integer::digit_quotrem(tmp, 10, rem);
+        str += std::to_string(rem);
     }
     if (sign == -1)
         str.push_back('-');
@@ -465,8 +465,6 @@ void big_integer::multiply_absolute(big_integer &a, big_integer const &b)
     big_integer result;
     result.sign = 1;
     result.number.resize(a.number.size() + b.number.size() + 2, 0);
-
-    a.number.make_unique();
     ull storage = 0, borrow = 0, tmp = 0;
     for (size_t i = 0; i < a.number.size(); i++) {
         storage = 0;
@@ -474,8 +472,8 @@ void big_integer::multiply_absolute(big_integer &a, big_integer const &b)
         tmp = 0;
         for (size_t j = 0; j < b.number.size(); j++) {
             storage = ull_cast(a.number[i]) * ull_cast(b.number[j]);
-            tmp = (storage & logic_base) + result.number[i + j] + borrow;
-            result.number[i + j] = ui_cast(tmp & logic_base);
+            tmp = (storage & a.logic_base) + result.number[i + j] + borrow;
+            result.number[i + j] = ui_cast(tmp & a.logic_base);
             borrow = (storage >> (bits_in_base)) + (tmp >> (bits_in_base));
         }
         result.number[i + b.number.size()] += ui_cast(borrow);
@@ -487,18 +485,19 @@ void big_integer::multiply_absolute(big_integer &a, big_integer const &b)
 
 big_integer big_integer::multiply_digit(big_integer const &num, ui x)
 {
-    big_integer tmp(num);
+    big_integer tmp;
     ull remainder = 0;
-    tmp.number.make_unique();
-    for (size_t i = 0; i < tmp.number.size(); i++) {
+    tmp.number.resize(num.number.size() + 1);
+    size_t i = 0;
+    for (; i < num.number.size(); i++) {
         ull product = num.number[i] * ull_cast(x) + remainder;
-        tmp.number[i] = ui_cast(product & (logic_base));
+        tmp.number[i] = ui_cast(product & (num.logic_base));
         remainder = product >> (bits_in_base);
     }
     if (remainder)
-        tmp.number.push_back(ui_cast(remainder));
+        tmp.number[i] = ui_cast(remainder);
     tmp.sign = 1;
-    normalize(tmp);
+    //normalize(tmp);
     return tmp;
 }
 
@@ -516,7 +515,7 @@ big_integer operator*(big_integer a, big_integer const &rhs)
     return a;
 }
 
-big_integer big_integer::digit_quot(big_integer const &num, ui x)
+big_integer big_integer::digit_quotrem(big_integer const &num, ui x, ui &remainder)
 {
     ull tmp = 0;
     big_integer result;
@@ -529,16 +528,8 @@ big_integer big_integer::digit_quot(big_integer const &num, ui x)
     }
     std::reverse(result.number.begin(), result.number.end());
     normalize(result);
+    remainder = ui_cast(tmp);
     return result;
-}
-
-ui big_integer::digit_rem(big_integer const &num, ui x)
-{
-    ull tmp = 0;
-    for (size_t i = num.number.size() - 1; i < num.number.size(); i--) {
-        tmp = ((tmp << (bits_in_base)) + num.number[i]) % x;
-    }
-    return ui_cast(tmp);
 }
 
 ui big_integer::trial(big_integer const &r, big_integer const &d, ui k, ui m)
@@ -550,7 +541,7 @@ ui big_integer::trial(big_integer const &r, big_integer const &d, ui k, ui m)
         (ull_cast(r.number[km]) << (bits_in_base)) + (ull_cast(r.number[km - 1]));
     ull d1 = ull_cast(d.number[m - 1]);
     ull left = r1 / d1;
-    return std::min(ui_cast(left), logic_base);
+    return std::min(ui_cast(left), r.logic_base);
 }
 
 bool big_integer::cmp_prefix(big_integer const &r, big_integer const &d, ui k,
@@ -573,7 +564,7 @@ std::pair<big_integer, big_integer> big_integer::divide(big_integer const &x,
     q.sign = 1;
     size_t n = x.number.size(), m = y.number.size();
     ull e = base;
-    ui f = ui_cast(e / (y.number[y.number.size() - 1] + 1));
+    ui f = ui_cast(e / (y.number.back() + 1));
     if (f != 0)
         r = multiply_digit(x, f);
     else
@@ -595,9 +586,10 @@ std::pair<big_integer, big_integer> big_integer::divide(big_integer const &x,
         q.number[k] = qt;
         r -= dq << static_cast<int>(((bits_in_base)*k));
     }
-    if (f != 0)
-        r = digit_quot(r, f);
-    else
+    if (f != 0) {
+        ui unused;
+        r = digit_quotrem(r, f, unused);
+    } else
         r = r >> static_cast<int>(bits_in_base);
     normalize(q);
     std::pair<big_integer, big_integer> ans{q, r};
@@ -615,8 +607,9 @@ big_integer::division(big_integer const &a, big_integer const &b)
     if (a == b)
         return std::pair<big_integer, big_integer>{1, 0};
     if (b.number.size() == 1) {
-        return std::pair<big_integer, big_integer>{digit_quot(a, b.number[0]),
-                                                   digit_rem(a, b.number[0])};
+        ui tmp;
+        big_integer result = digit_quotrem(a, b.number[0], tmp);
+        return std::pair<big_integer, big_integer>{result, tmp};
     }
     return divide(a, b);
 }
@@ -667,7 +660,6 @@ int sgn(big_integer const &a) { return a.sign; }
 
 void big_integer::normalize(big_integer &a)
 {
-    a.number.make_unique();
     while ((a.number.back() == 0) && (a.number.size() > 1))
         a.number.pop_back();
     if (a.number.size() == 1 && a.number[0] == 0)
@@ -680,7 +672,7 @@ void abs(big_integer &a)
         a.sign = 1;
 }
 
-bool big_integer::zero(big_integer const &a) const
+bool big_integer::zero(big_integer const &a)
 {
     if ((a.number.size() == 1) && (a.number[0]) == 0)
         return true;
