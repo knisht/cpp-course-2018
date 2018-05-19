@@ -4,6 +4,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <stdio.h>
 #include <test/gtest.h>
 #include <utility>
 #include <vector>
@@ -146,6 +147,8 @@ TEST(correctness, simple_text)
     encode_file(infile, infile + "huff", engine, ifs, ofs);
     decode(infile + "huff", outfile, engine, ifs, ofs);
     ASSERT_TRUE(check_files_equality(infile, outfile));
+    remove(outfile.c_str());
+    remove(infile.append("huff").c_str());
 }
 
 TEST(correctness, unicode_symbols)
@@ -159,6 +162,8 @@ TEST(correctness, unicode_symbols)
     encode_file(infile, infile + "huff", engine, ifs, ofs);
     decode(infile + "huff", outfile, engine, ifs, ofs);
     ASSERT_TRUE(check_files_equality(infile, outfile));
+    remove(outfile.c_str());
+    remove(infile.append("huff").c_str());
 }
 
 TEST(correctness, many_equal_symbols)
@@ -172,6 +177,8 @@ TEST(correctness, many_equal_symbols)
     encode_file(infile, infile + "huff", engine, ifs, ofs);
     decode(infile + "huff", outfile, engine, ifs, ofs);
     ASSERT_TRUE(check_files_equality(infile, outfile));
+    remove(outfile.c_str());
+    remove(infile.append("huff").c_str());
 }
 
 TEST(correctness, file_not_found)
@@ -200,4 +207,6 @@ TEST(correctness, file_not_found)
 //    encode_file(infile, infile + "huff", engine, ifs, ofs);
 //    decode(infile + "huff", outfile, engine, ifs, ofs);
 //    ASSERT_TRUE(check_files_equality(infile, outfile));
+//    remove(outfile.c_str());
+//    remove(infile.append("huff").c_str());
 //}
