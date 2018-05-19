@@ -1,6 +1,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
 #include <test/gtest.h>
 #include <utility>
 #include <vector>
@@ -81,7 +84,7 @@ TEST(correctness, random)
     huffman_engine engine{};
     bitstring src;
     for (size_t i = 0; i < 100; ++i) {
-        int curturn = rand() % 600;
+        int curturn = rand() % 520;
         if (curturn < 256) {
             engine.add(static_cast<char>(curturn));
             text.push_back(static_cast<char>(curturn));
@@ -99,3 +102,102 @@ TEST(correctness, random)
     engine.encode(text, src);
     EXPECT_EQ(engine.decode(src), text);
 }
+
+extern void decode(std::string const &sourcefile, std::string const &outfile, huffman_engine &engine, std::ifstream &ifs, std::ofstream &ofs);
+extern void read_and_enrich_file(std::string const &filename, huffman_engine &engine, std::ifstream &ifs);
+extern void encode_file(std::string const &source, std::string const &outfile, huffman_engine &engine, std::ifstream &ifs, std::ofstream &ofs);
+
+size_t const buffer_size = 1 << 15;
+bool check_files_equality(std::string const &filepath1, std::string const &filepath2)
+{
+    std::ifstream lFile(filepath1.c_str(), std::ios::in | std::ios::binary);
+    std::ifstream rFile(filepath2.c_str(), std::ios::in | std::ios::binary);
+
+    if (!lFile.good() || !rFile.good()) {
+        return false;
+    }
+
+    std::streamsize lReadBytesCount = 0;
+    std::streamsize rReadBytesCount = 0;
+    char buffer1[buffer_size];
+    char buffer2[buffer_size];
+    do {
+        lFile.read(buffer1, buffer_size);
+        rFile.read(buffer2, buffer_size);
+        lReadBytesCount = lFile.gcount();
+        rReadBytesCount = rFile.gcount();
+
+        if (lReadBytesCount != rReadBytesCount || std::memcmp(buffer1, buffer2, lReadBytesCount) != 0) {
+            return false;
+        }
+    } while (lFile.good() || rFile.good());
+
+    return true;
+}
+
+TEST(correctness, simple_text)
+{
+    std::ofstream ofs;
+    std::ifstream ifs;
+    std::string infile = "../test/test1.txt";
+    std::string outfile = "../test/test1-decoded.txt";
+    huffman_engine engine{};
+    read_and_enrich_file(infile, engine, ifs);
+    encode_file(infile, infile + "huff", engine, ifs, ofs);
+    decode(infile + "huff", outfile, engine, ifs, ofs);
+    ASSERT_TRUE(check_files_equality(infile, outfile));
+}
+
+TEST(correctness, unicode_symbols)
+{
+    std::ofstream ofs;
+    std::ifstream ifs;
+    std::string infile = "../test/test2.txt";
+    std::string outfile = "../test/test2-decoded.txt";
+    huffman_engine engine{};
+    read_and_enrich_file(infile, engine, ifs);
+    encode_file(infile, infile + "huff", engine, ifs, ofs);
+    decode(infile + "huff", outfile, engine, ifs, ofs);
+    ASSERT_TRUE(check_files_equality(infile, outfile));
+}
+
+TEST(correctness, many_equal_symbols)
+{
+    std::ofstream ofs;
+    std::ifstream ifs;
+    std::string infile = "../test/test3.txt";
+    std::string outfile = "../test/test3-decoded.txt";
+    huffman_engine engine{};
+    read_and_enrich_file(infile, engine, ifs);
+    encode_file(infile, infile + "huff", engine, ifs, ofs);
+    decode(infile + "huff", outfile, engine, ifs, ofs);
+    ASSERT_TRUE(check_files_equality(infile, outfile));
+}
+
+TEST(correctness, file_not_found)
+{
+    std::ofstream ofs;
+    std::ifstream ifs;
+    std::string infile = "../test/test4.txt";
+    std::string outfile = "../test/test4-decoded.txt";
+    huffman_engine engine{};
+
+    ASSERT_THROW(read_and_enrich_file(infile, engine, ifs), std::runtime_error);
+    ASSERT_THROW(encode_file(infile, infile + "huff", engine, ifs, ofs), std::runtime_error);
+    ASSERT_THROW(decode(infile + "huff", outfile, engine, ifs, ofs), std::runtime_error);
+}
+
+// Following test is too large to transfer it by net :(
+
+//TEST(correctness, longfile)
+//{
+//    std::ofstream ofs;
+//    std::ifstream ifs;
+//    std::string infile = "../test/test5.txt";
+//    std::string outfile = "../test/test5-decoded.txt";
+//    huffman_engine engine{};
+//    read_and_enrich_file(infile, engine, ifs);
+//    encode_file(infile, infile + "huff", engine, ifs, ofs);
+//    decode(infile + "huff", outfile, engine, ifs, ofs);
+//    ASSERT_TRUE(check_files_equality(infile, outfile));
+//}

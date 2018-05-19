@@ -15,9 +15,7 @@ int main(int argc, char *argv[])
         std::cout << "Wrong number of arguments! (" << argc << ")" << std::endl;
     } else {
         std::string targetcommand(argv[1], strlen(argv[1]));
-        std::cout << targetcommand << std::endl;
         std::string targetfile(argv[2], strlen(argv[2]));
-        std::cout << targetfile << std::endl;
 
         std::ofstream ofs;
         std::ifstream ifs;
@@ -32,8 +30,12 @@ int main(int argc, char *argv[])
             }
         } else if (targetcommand == "unpack") {
             std::cout << "Unpacking..." << std::endl;
-            decode(targetfile + ".huff", targetfile, engine, ifs, ofs);
-            std::cout << "Unpacked to " << targetfile << std::endl;
+            try {
+                decode(targetfile + ".huff", targetfile, engine, ifs, ofs);
+                std::cout << "Unpacked to " << targetfile << std::endl;
+            } catch (std::runtime_error e) {
+                std::cerr << e.what() << std::endl;
+            }
         } else {
             std::cout << "Unsupported command!" << std::endl;
         }

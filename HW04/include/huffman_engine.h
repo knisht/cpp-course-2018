@@ -19,16 +19,16 @@ class huffman_engine
     };
 
 public:
-    huffman_engine();                                       //
-    void add(char word);                                    //
-    void add_all(const std::string &str);                   //
-    void encode(const std::string &str, bitstring &target); //
+    huffman_engine();
+    void add(char word);
+    void add_all(const std::string &str);
+    void encode(const std::string &str, bitstring &target);
 
-    std::vector<Node> generate_code(); //
+    std::vector<Node> generate_code();
 
-    void set_tree(std::vector<Node>); //
+    void set_tree(std::vector<Node>);
 
-    std::string decode(bitstring &source, size_t length = 0); //
+    std::string decode(bitstring &source, size_t length = 0);
 
     void get_dictionary_representation(bitstring &order, bitstring &leaves);
 

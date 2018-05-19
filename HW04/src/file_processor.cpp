@@ -11,6 +11,9 @@ void decode(std::string const &sourcefile, std::string const &outfile, huffman_e
     ifs.open(sourcefile, std::ios_base::binary | std::ios_base::ate);
     long long file_length = ifs.tellg();
 
+    if (file_length == -1)
+        throw std::runtime_error("File not found!");
+
     char buffer[buffer_size];
 
     bitstring dictionaty_information;
@@ -78,7 +81,6 @@ void decode(std::string const &sourcefile, std::string const &outfile, huffman_e
 
     engine.flush();
     engine.set_tree(engine.decode_dictionary(bypass, words));
-    //std::ofstream
     ofs.open(outfile, std::ios::binary);
     file_length -= 12 + words_amount + (dictionary_length + 7) / 8;
     text_size -= code_accumulator.length();
@@ -102,19 +104,18 @@ void decode(std::string const &sourcefile, std::string const &outfile, huffman_e
         std::string decoded = engine.decode(code_accumulator, text_size + left_for_complete);
         ofs << decoded << std::flush;
     }
-
     ifs.close();
     ofs.close();
 }
 
 void read_and_enrich_file(std::string const &filename, huffman_engine &engine, std::ifstream &ifs)
 {
-    //std::cout << "ENCODINGS" << std::endl;
-    //std::cout << "SETTED" << std::endl;
     ifs.open(filename, std::ios_base::binary | std::ios_base::ate);
 
     long long file_length = ifs.tellg();
 
+    if (file_length == -1)
+        throw std::runtime_error("File not found!");
     char buffer[buffer_size];
     ifs.seekg(0, std::ios::beg);
 
@@ -133,11 +134,13 @@ void read_and_enrich_file(std::string const &filename, huffman_engine &engine, s
 
 void encode_file(std::string const &source, std::string const &outfile, huffman_engine &engine, std::ifstream &ifs, std::ofstream &ofs)
 {
-    //std::ifstream ifs(source, std::ios::binary | std::ios::ate);
     ifs.open(source, std::ios_base::binary | std::ios_base::ate);
     long long file_length = ifs.tellg();
+
+    if (file_length == -1)
+        throw std::runtime_error("File not found!");
+
     ifs.seekg(0, std::ios_base::beg);
-    //std::ofstream ofs(outfile, std::ios::binary);
     ofs.open(outfile, std::ios_base::binary);
 
     bitstring tree_representation;
@@ -177,7 +180,6 @@ void encode_file(std::string const &source, std::string const &outfile, huffman_
 
     std::string bufstr(buffer, file_length);
 
-    //std::cout << bufstr << std::endl;
     engine.encode(bufstr, encoded_representation);
 
     ofs << encoded_representation.data() << std::flush;
