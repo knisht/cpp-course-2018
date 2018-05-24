@@ -11,14 +11,14 @@ extern void encode_file(std::string const &source, std::string const &outfile, h
 int main(int argc, char *argv[])
 {
     huffman_engine engine{};
+    std::ofstream ofs;
+    std::ifstream ifs;
     if (argc < 3 || argc > 3) {
         std::cout << "Wrong number of arguments! (" << argc << ")" << std::endl;
     } else {
         std::string targetcommand(argv[1], strlen(argv[1]));
         std::string targetfile(argv[2], strlen(argv[2]));
 
-        std::ofstream ofs;
-        std::ifstream ifs;
         if (targetcommand == "pack") {
             std::cout << "Packing..." << std::endl;
             try {
@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
                 encode_file(targetfile, targetfile + ".huff", engine, ifs, ofs);
                 std::cout << "Packed to " << targetfile << ".huff" << std::endl;
             } catch (std::runtime_error e) {
+                std::cerr << "Error occured." << std::endl;
                 std::cerr << e.what() << std::endl;
             }
         } else if (targetcommand == "unpack") {
@@ -34,6 +35,7 @@ int main(int argc, char *argv[])
                 decode(targetfile + ".huff", targetfile, engine, ifs, ofs);
                 std::cout << "Unpacked to " << targetfile << std::endl;
             } catch (std::runtime_error e) {
+                std::cerr << "Error occured." << std::endl;
                 std::cerr << e.what() << std::endl;
             }
         } else {

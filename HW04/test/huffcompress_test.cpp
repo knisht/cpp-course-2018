@@ -84,12 +84,12 @@ TEST(correctness, random)
     std::string text = "";
     huffman_engine engine{};
     bitstring src;
-    for (size_t i = 0; i < 100; ++i) {
+    for (size_t i = 0; i < 1000; ++i) {
         int curturn = rand() % 520;
         if (curturn < 256) {
-            engine.add(static_cast<char>(curturn));
+            engine.add_all(std::string{static_cast<char>(curturn)});
             text.push_back(static_cast<char>(curturn));
-        } else if (curturn < 512) {
+        } else if (curturn < 519) {
             engine.set_tree(engine.generate_code());
             bitstring order, words;
             engine.get_dictionary_representation(order, words);
@@ -102,6 +102,22 @@ TEST(correctness, random)
     engine.set_tree(engine.generate_code());
     engine.encode(text, src);
     EXPECT_EQ(engine.decode(src), text);
+}
+
+TEST(correctness, big)
+{
+    for (size_t j = 0; j < 10; ++j) {
+        std::string text = "";
+        huffman_engine engine{};
+        bitstring src;
+        for (size_t i = 0; i < 1000000; ++i) {
+            text.push_back((char)(32 + (rand() % 120)));
+        }
+        engine.add_all(text);
+        engine.set_tree(engine.generate_code());
+        engine.encode(text, src);
+        EXPECT_EQ(engine.decode(src), text);
+    }
 }
 
 extern void decode(std::string const &sourcefile, std::string const &outfile, huffman_engine &engine, std::ifstream &ifs, std::ofstream &ofs);
@@ -138,8 +154,8 @@ bool check_files_equality(std::string const &filepath1, std::string const &filep
 
 TEST(correctness, simple_text)
 {
-    std::ofstream ofs;
     std::ifstream ifs;
+    std::ofstream ofs;
     std::string infile = "../test/test1.txt";
     std::string outfile = "../test/test1-decoded.txt";
     huffman_engine engine{};
@@ -153,8 +169,8 @@ TEST(correctness, simple_text)
 
 TEST(correctness, unicode_symbols)
 {
-    std::ofstream ofs;
     std::ifstream ifs;
+    std::ofstream ofs;
     std::string infile = "../test/test2.txt";
     std::string outfile = "../test/test2-decoded.txt";
     huffman_engine engine{};
@@ -168,8 +184,8 @@ TEST(correctness, unicode_symbols)
 
 TEST(correctness, many_equal_symbols)
 {
-    std::ofstream ofs;
     std::ifstream ifs;
+    std::ofstream ofs;
     std::string infile = "../test/test3.txt";
     std::string outfile = "../test/test3-decoded.txt";
     huffman_engine engine{};
@@ -183,8 +199,8 @@ TEST(correctness, many_equal_symbols)
 
 TEST(correctness, file_not_found)
 {
-    std::ofstream ofs;
     std::ifstream ifs;
+    std::ofstream ofs;
     std::string infile = "../test/test4.txt";
     std::string outfile = "../test/test4-decoded.txt";
     huffman_engine engine{};
@@ -194,19 +210,44 @@ TEST(correctness, file_not_found)
     ASSERT_THROW(decode(infile + "huff", outfile, engine, ifs, ofs), std::runtime_error);
 }
 
-// Following test is too large to transfer it by net :(
+//Following test is too large to transfer it by net :(
 
-//TEST(correctness, longfile)
-//{
-//    std::ofstream ofs;
-//    std::ifstream ifs;
-//    std::string infile = "../test/test5.txt";
-//    std::string outfile = "../test/test5-decoded.txt";
-//    huffman_engine engine{};
-//    read_and_enrich_file(infile, engine, ifs);
-//    encode_file(infile, infile + "huff", engine, ifs, ofs);
-//    decode(infile + "huff", outfile, engine, ifs, ofs);
-//    ASSERT_TRUE(check_files_equality(infile, outfile));
-//    remove(outfile.c_str());
-//    remove(infile.append("huff").c_str());
-//}
+TEST(correctness, file_creation)
+{
+    std::ofstream ofs;
+    std::string infile = "../test/test5.txt";
+    std::string outfile = "../test/test5-decoded.txt";
+    ofs.open(infile, std::ios_base::binary);
+    huffman_engine engine{};
+    for (int j = 0; j < 900; ++j)
+        for (size_t i = 0; i < 100000; ++i) {
+            ofs << static_cast<char>(rand() % 256);
+            if (i % 10000 == 0)
+                ofs << std::flush;
+        }
+    ofs.close();
+}
+
+TEST(correctness, onlycompress)
+{
+    std::ifstream ifs;
+    std::ofstream ofs;
+    std::string infile = "../test/test5.txt";
+    std::string outfile = "../test/test5-decoded.txt";
+    huffman_engine engine{};
+    read_and_enrich_file(infile, engine, ifs);
+    encode_file(infile, infile + "huff", engine, ifs, ofs);
+}
+
+TEST(correctness, onlydecode)
+{
+    std::ifstream ifs;
+    std::ofstream ofs;
+    std::string infile = "../test/test5.txt";
+    std::string outfile = "../test/test5-decoded.txt";
+    huffman_engine engine{};
+    decode(infile + "huff", outfile, engine, ifs, ofs);
+    remove(outfile.c_str());
+    remove(infile.c_str());
+    remove(infile.append("huff").c_str());
+}

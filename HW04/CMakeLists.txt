@@ -18,24 +18,24 @@ add_executable(huffcompress
                )
 
 add_executable(huffcompress_test
-    ${TEST_DIR}/huffcompress_test.cpp
-    ${TEST_DIR}/gtest.h
-    ${TEST_DIR}/gtest_main.cc
-    ${TEST_DIR}/gtest-all.cc
-    ${SOURCE_DIR}/file_processor.cpp
-    )
+               ${TEST_DIR}/huffcompress_test.cpp
+               ${TEST_DIR}/gtest.h
+               ${TEST_DIR}/gtest_main.cc
+               ${TEST_DIR}/gtest-all.cc
+               ${SOURCE_DIR}/file_processor.cpp
+               )
 
 add_library(huffman_algorithm
-    ${LIB_SOURCE_DIR}/bitstring.cpp
-    ${LIB_SOURCE_DIR}/huffman_engine.cpp
-    ${INCLUDE_LIB_DIR}/huffman_engine.h
-    ${INCLUDE_LIB_DIR}/bitstring.h
-    )
+            ${LIB_SOURCE_DIR}/bitstring.cpp
+            ${LIB_SOURCE_DIR}/huffman_engine.cpp
+            ${INCLUDE_LIB_DIR}/huffman_engine.h
+            ${INCLUDE_LIB_DIR}/bitstring.h
+            )
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")
 endif()
 
-target_link_libraries(huffcompress huffman_algorithm)
-target_link_libraries(huffcompress_test huffman_algorithm)
+target_link_libraries(huffcompress huffman_algorithm -lpthread)
+target_link_libraries(huffcompress_test huffman_algorithm -lpthread)

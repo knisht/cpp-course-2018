@@ -18,39 +18,36 @@ class huffman_engine
         word_type word;
     };
 
+    struct Huffman_tree {
+        Node root;
+        Node storage[512];
+        bool empty = true;
+        inline Node &operator[](size_t index) { return storage[index]; }
+    };
+
 public:
     huffman_engine();
-    void add(char word);
+
     void add_all(const std::string &str);
+    Huffman_tree generate_code();
+    void set_tree(const Huffman_tree &);
+
     void encode(const std::string &str, bitstring &target);
-
-    std::vector<Node> generate_code();
-
-    void set_tree(std::vector<Node>);
-
     std::string decode(bitstring &source, size_t length = 0);
 
     void get_dictionary_representation(bitstring &order, bitstring &leaves);
 
-    std::vector<Node> decode_dictionary(const bitstring &order, const bitstring &leaves);
+    Huffman_tree decode_dictionary(bitstring const &order, bitstring const &leaves);
 
-    unsigned long long getlen();
+    size_t getlen();
     void flush();
 
 private:
     codemap code;
     frequency_map frequencies;
-    std::vector<Node> tree;
-    Node tree_root;
+    Huffman_tree tree;
 
-    struct NodeComparator {
-        bool operator()(Node const &a, Node const &b) const
-        {
-            return a.weight < b.weight;
-        }
-    };
-
-    void tree_bypass(bitstring &, bitstring &, Node const &vertex);
+    void tree_bypass(bitstring &, bitstring &, Node const &vertex, bool is_root);
 };
 
 #endif // HUFFMAN_TREE_H
