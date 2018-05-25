@@ -64,7 +64,7 @@ void decode(std::string const &sourcefile, std::string const &outfile, huffman_e
                 words_amount += (1 << i);
         }
 
-        if (words_amount > file_length - 4 - (dictionary_length + 7) / 8)
+        if (words_amount > std::min(file_length - 4 - (dictionary_length + 7) / 8, 256ull))
             throw std::runtime_error("File corrupted");
 
         ifs.read(buffer, static_cast<std::streamsize>(words_amount));

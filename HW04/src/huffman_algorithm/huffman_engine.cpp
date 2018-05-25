@@ -118,7 +118,7 @@ std::string huffman_engine::decode(bitstring &source, size_t length)
     char result[1 << 20];
 
     size_t lastindex = 0;
-    size_t limit = ((length == 0) ? source.length() : length);
+    size_t limit = ((length == 0) ? source.length() : std::min(length, source.length()));
     size_t resindex = 0;
     for (size_t i = 0; i < limit; ++i) {
         if (current_vertex.left_child != SIZE_MAX) {
