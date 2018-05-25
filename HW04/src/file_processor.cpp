@@ -10,11 +10,12 @@ const size_t buffer_size = 1 << 19;
 void decode(std::string const &sourcefile, std::string const &outfile, huffman_engine &engine, std::ifstream &ifs, std::ofstream &ofs)
 {
     ifs.open(sourcefile, std::ios_base::binary | std::ios_base::ate);
-    long long file_length = ifs.tellg();
+    long long available = ifs.tellg();
 
-    if (file_length == -1)
+    if (available == -1)
         throw std::runtime_error("File not found!");
 
+    uint64_t file_length = static_cast<uint64_t>(available);
     char buffer[buffer_size];
 
     try {
@@ -130,10 +131,12 @@ void read_and_enrich_file(std::string const &filename, huffman_engine &engine, s
 {
     ifs.open(filename, std::ios_base::binary | std::ios_base::ate);
 
-    long long file_length = ifs.tellg();
+    long long available = ifs.tellg();
 
-    if (file_length == -1)
+    if (available == -1)
         throw std::runtime_error("File not found!");
+
+    uint64_t file_length = static_cast<uint64_t>(available);
     char buffer[buffer_size];
     ifs.seekg(0, std::ios::beg);
 
@@ -158,10 +161,12 @@ void read_and_enrich_file(std::string const &filename, huffman_engine &engine, s
 void encode_file(std::string const &source, std::string const &outfile, huffman_engine &engine, std::ifstream &ifs, std::ofstream &ofs)
 {
     ifs.open(source, std::ios_base::binary | std::ios_base::ate);
-    long long file_length = ifs.tellg();
+    long long available = ifs.tellg();
 
-    if (file_length == -1)
+    if (available == -1)
         throw std::runtime_error("File not found!");
+
+    uint64_t file_length = static_cast<uint64_t>(available);
 
     ifs.seekg(0, std::ios_base::beg);
 
