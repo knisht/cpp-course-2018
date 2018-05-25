@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
             try {
                 std::string outfile = targetfile + ".huff";
                 if (argc == 5) {
-                    if (std::string(argv[3], strlen(argv[3])) == "to") {
+                    if ((std::string(argv[3], strlen(argv[3])) == "to") && (std::string(argv[4], strlen(argv[4])) != targetfile)) {
                         outfile = std::string(argv[4], strlen(argv[4]));
                     }
                 }
