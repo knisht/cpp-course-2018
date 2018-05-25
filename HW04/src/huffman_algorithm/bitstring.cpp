@@ -58,7 +58,7 @@ void bitstring::append(bitstring &other)
 {
 
     if (storage.size() * 64 <= _length + other._length) {
-        storage.resize(std::max(storage.size() * 2, (_length + other._length + 63) / 64), 0);
+        storage.resize(std::max(storage.size() * 2, (_length + other._length + 63) / 64) + 5, 0);
     }
     size_t remainder = (64 - (_length % 64)) % 64;
     size_t previous_block = (_length / 64);
