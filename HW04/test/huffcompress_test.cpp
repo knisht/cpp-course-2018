@@ -160,11 +160,11 @@ TEST(correctness, simple_text)
     std::string outfile = "../test/test1-decoded.txt";
     huffman_engine engine{};
     read_and_enrich_file(infile, engine, ifs);
-    encode_file(infile, infile + "huff", engine, ifs, ofs);
-    decode(infile + "huff", outfile, engine, ifs, ofs);
+    encode_file(infile, infile + ".huff", engine, ifs, ofs);
+    decode(infile + ".huff", outfile, engine, ifs, ofs);
     ASSERT_TRUE(check_files_equality(infile, outfile));
     remove(outfile.c_str());
-    remove(infile.append("huff").c_str());
+    remove(infile.append(".huff").c_str());
 }
 
 TEST(correctness, unicode_symbols)
@@ -175,11 +175,11 @@ TEST(correctness, unicode_symbols)
     std::string outfile = "../test/test2-decoded.txt";
     huffman_engine engine{};
     read_and_enrich_file(infile, engine, ifs);
-    encode_file(infile, infile + "huff", engine, ifs, ofs);
-    decode(infile + "huff", outfile, engine, ifs, ofs);
+    encode_file(infile, infile + ".huff", engine, ifs, ofs);
+    decode(infile + ".huff", outfile, engine, ifs, ofs);
     ASSERT_TRUE(check_files_equality(infile, outfile));
     remove(outfile.c_str());
-    remove(infile.append("huff").c_str());
+    remove(infile.append(".huff").c_str());
 }
 
 TEST(correctness, many_equal_symbols)
@@ -190,11 +190,11 @@ TEST(correctness, many_equal_symbols)
     std::string outfile = "../test/test3-decoded.txt";
     huffman_engine engine{};
     read_and_enrich_file(infile, engine, ifs);
-    encode_file(infile, infile + "huff", engine, ifs, ofs);
-    decode(infile + "huff", outfile, engine, ifs, ofs);
+    encode_file(infile, infile + ".huff", engine, ifs, ofs);
+    decode(infile + ".huff", outfile, engine, ifs, ofs);
     ASSERT_TRUE(check_files_equality(infile, outfile));
     remove(outfile.c_str());
-    remove(infile.append("huff").c_str());
+    remove(infile.append(".huff").c_str());
 }
 
 TEST(correctness, file_not_found)
@@ -206,17 +206,25 @@ TEST(correctness, file_not_found)
     huffman_engine engine{};
 
     ASSERT_THROW(read_and_enrich_file(infile, engine, ifs), std::runtime_error);
-    ASSERT_THROW(encode_file(infile, infile + "huff", engine, ifs, ofs), std::runtime_error);
-    ASSERT_THROW(decode(infile + "huff", outfile, engine, ifs, ofs), std::runtime_error);
+    ASSERT_THROW(encode_file(infile, infile + ".huff", engine, ifs, ofs), std::runtime_error);
+    ASSERT_THROW(decode(infile + ".huff", outfile, engine, ifs, ofs), std::runtime_error);
 }
 
-//Following test is too large to transfer it by net :(
+TEST(correctness, file_corrupted)
+{
+    std::ifstream ifs;
+    std::ofstream ofs;
+    std::string infile = "../test/test5.txt";
+    std::string outfile = "../test/test5-decoded.txt";
+    huffman_engine engine{};
+    ASSERT_THROW(decode(infile + ".huff", outfile, engine, ifs, ofs), std::runtime_error);
+}
 
 TEST(correctness, file_creation)
 {
     std::ofstream ofs;
-    std::string infile = "../test/test5.txt";
-    std::string outfile = "../test/test5-decoded.txt";
+    std::string infile = "../test/test6.txt";
+    std::string outfile = "../test/test6-decoded.txt";
     ofs.open(infile, std::ios_base::binary);
     huffman_engine engine{};
     for (int j = 0; j < 900; ++j)
@@ -228,26 +236,26 @@ TEST(correctness, file_creation)
     ofs.close();
 }
 
-TEST(correctness, onlycompress)
+TEST(correctness, only_compress)
 {
     std::ifstream ifs;
     std::ofstream ofs;
-    std::string infile = "../test/test5.txt";
-    std::string outfile = "../test/test5-decoded.txt";
+    std::string infile = "../test/test6.txt";
+    std::string outfile = "../test/test6-decoded.txt";
     huffman_engine engine{};
     read_and_enrich_file(infile, engine, ifs);
-    encode_file(infile, infile + "huff", engine, ifs, ofs);
+    encode_file(infile, infile + ".huff", engine, ifs, ofs);
 }
 
-TEST(correctness, onlydecode)
+TEST(correctness, only_decode)
 {
     std::ifstream ifs;
     std::ofstream ofs;
-    std::string infile = "../test/test5.txt";
-    std::string outfile = "../test/test5-decoded.txt";
+    std::string infile = "../test/test6.txt";
+    std::string outfile = "../test/test6-decoded.txt";
     huffman_engine engine{};
-    decode(infile + "huff", outfile, engine, ifs, ofs);
+    decode(infile + ".huff", outfile, engine, ifs, ofs);
     remove(outfile.c_str());
     remove(infile.c_str());
-    remove(infile.append("huff").c_str());
+    remove(infile.append(".huff").c_str());
 }
