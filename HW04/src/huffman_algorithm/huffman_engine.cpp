@@ -108,7 +108,8 @@ void huffman_engine::encode(std::string const &source, bitstring &past)
 {
     past.reserve(source.length() * 8);
     for (size_t i = 0; i < source.length(); ++i) {
-        past.append(code[static_cast<word_type>(source[i])]);
+        word_type target = static_cast<word_type>(source[i]);
+        past.append(code[target]);
     }
 }
 

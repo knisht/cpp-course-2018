@@ -5,7 +5,7 @@
 #include <iostream>
 #include <streambuf>
 
-const size_t buffer_size = 1 << 19;
+const size_t buffer_size = 1 << 17;
 
 void decode(std::string const &sourcefile, std::string const &outfile, huffman_engine &engine, std::ifstream &ifs, std::ofstream &ofs)
 {

@@ -227,7 +227,7 @@ TEST(correctness, file_creation)
     std::string outfile = "../test/test6-decoded.txt";
     ofs.open(infile, std::ios_base::binary);
     huffman_engine engine{};
-    for (int j = 0; j < 900; ++j) {
+    for (size_t j = 0; j < 900; ++j) {
         std::string buffer;
         buffer.reserve(100000);
         for (size_t i = 0; i < 100000; ++i) {
@@ -235,6 +235,7 @@ TEST(correctness, file_creation)
         }
         ofs << buffer << std::flush;
     }
+
     ofs.close();
 }
 
