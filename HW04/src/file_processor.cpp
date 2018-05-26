@@ -86,7 +86,7 @@ void decode(std::string const &sourcefile, std::string const &outfile, huffman_e
         }
         // Compressed code reading
         bitstring code_accumulator;
-        for (size_t i = 80 + words_amount * 8; i < dictionary_information.length(); ++i) {
+        for (size_t i = 80 + words_amount * 8; i < std::min(dictionary_information.length(), 80 + (words_amount * 8) + text_size); ++i) {
             code_accumulator.append(dictionary_information[i]);
         }
 
