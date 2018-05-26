@@ -211,7 +211,9 @@ void encode_file(std::string const &source, std::string const &outfile, huffman_
         std::string bufstr(buffer, static_cast<size_t>(file_length));
 
         engine.encode(bufstr, encoded_representation);
-        ofs << encoded_representation.data() << std::flush;
+        ofs << encoded_representation.split_string() << std::flush;
+        if (encoded_representation.length() != 0)
+            ofs << encoded_representation.data() << std::flush;
         ofs.close();
         ifs.close();
     } catch (std::runtime_error e) {
