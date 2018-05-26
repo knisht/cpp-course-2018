@@ -227,12 +227,14 @@ TEST(correctness, file_creation)
     std::string outfile = "../test/test6-decoded.txt";
     ofs.open(infile, std::ios_base::binary);
     huffman_engine engine{};
-    for (int j = 0; j < 900; ++j)
+    for (int j = 0; j < 900; ++j) {
+        std::string buffer;
+        buffer.reserve(100000);
         for (size_t i = 0; i < 100000; ++i) {
-            ofs << static_cast<char>(rand() % 256);
-            if (i % 10000 == 0)
-                ofs << std::flush;
+            buffer.push_back(static_cast<char>(rand() % 256));
         }
+        ofs << buffer << std::flush;
+    }
     ofs.close();
 }
 
@@ -255,6 +257,13 @@ TEST(correctness, only_decode)
     std::string outfile = "../test/test6-decoded.txt";
     huffman_engine engine{};
     decode(infile + ".huff", outfile, engine, ifs, ofs);
+}
+
+TEST(correctness, checking_bigfile_correctness)
+{
+    std::string infile = "../test/test6.txt";
+    std::string outfile = "../test/test6-decoded.txt";
+    ASSERT_TRUE(check_files_equality(infile, outfile));
     remove(outfile.c_str());
     remove(infile.c_str());
     remove(infile.append(".huff").c_str());
