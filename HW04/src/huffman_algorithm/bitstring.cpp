@@ -83,7 +83,7 @@ std::string bitstring::data()
 {
     std::string result;
     for (uint64_t term : storage) {
-        result.append((reinterpret_cast<char *>(&term)), std::min((_length + 7) / 8, 8u));
+        result.append((reinterpret_cast<char *>(&term)), std::min((_length + 7) / 8, static_cast<size_t>(8)));
     }
     return result;
 }
