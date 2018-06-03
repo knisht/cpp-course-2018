@@ -6,3 +6,12 @@ ITMO cpp-course hw's
   
 ## 2-3. Long number arithmetics in C++ using copy-on-write and small-object optimizations
   Almost all common operations that are use integral types. Pretty well optimized :)
+  
+## 4. File compress tool based on Huffman compressing algorithm
+  Command-line tool for compressing files of any size (even if they are too big for RAM). 
+  
+Interface: 
+`pack <src>[to <dst>]`
+`unpack <src>[to <dst>]`
+
+Also provided library with algorithms for compressing and decompressing any stream of bits. 
