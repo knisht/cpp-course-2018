@@ -122,22 +122,29 @@ public:
             return node->get_data();
         }
 
-        bool operator==(generic_iterator other)
+        template <typename P>
+        bool operator==(generic_iterator<P> const &other) const
         {
             return this->node == other.node;
         }
 
-        template <typename Z>
-        friend bool operator==(generic_iterator<Q> lhs, generic_iterator<Z> rhs)
+        template <typename P>
+        bool operator!=(generic_iterator<P> const &other) const
         {
-            return rhs == lhs;
+            return this->node != other.node;
         }
 
-        template <typename Z>
-        friend bool operator!=(generic_iterator<Q> lhs, generic_iterator<Z> rhs)
-        {
-            return !(rhs == lhs);
-        }
+        //        template <typename Z>
+        //        friend bool operator==(generic_iterator<Q> lhs, generic_iterator<Z> rhs)
+        //        {
+        //            return lhs.node == rhs.node;
+        //        }
+
+        //        template <typename Z>
+        //        friend bool operator!=(generic_iterator<Q> lhs, generic_iterator<Z> rhs)
+        //        {
+        //            return lhs.node != rhs.node;
+        //        }
     };
 
     typedef generic_iterator<T> iterator;
