@@ -441,6 +441,8 @@ void List<T>::splice(const_iterator pos, List &other, const_iterator first, cons
         this->length_ += dist;
         other.length_ -= dist;
     }
+    if (first == last)
+        return;
     Node *first_out = first.node->prev;
     Node *last_in = last.node->prev;
     first_out->next = last.node;
