@@ -133,18 +133,6 @@ public:
         {
             return this->node != other.node;
         }
-
-        //        template <typename Z>
-        //        friend bool operator==(generic_iterator<Q> lhs, generic_iterator<Z> rhs)
-        //        {
-        //            return lhs.node == rhs.node;
-        //        }
-
-        //        template <typename Z>
-        //        friend bool operator!=(generic_iterator<Q> lhs, generic_iterator<Z> rhs)
-        //        {
-        //            return lhs.node != rhs.node;
-        //        }
     };
 
     typedef generic_iterator<T> iterator;
@@ -448,23 +436,19 @@ typename List<T>::iterator List<T>::erase(const_iterator first, const_iterator l
 template <typename T>
 void List<T>::splice(const_iterator pos, List &other, const_iterator first, const_iterator last)
 {
-    if (&(other.center) == &(this->center)) {
-        Node *first_out = first.node->prev;
-        Node *last_in = last.node->prev;
-        first_out->next = last.node;
-        last.node->prev = first_out;
-        first.node->prev = pos.node->prev;
-        pos.node->prev->next = first.node;
-        last_in->next = pos.node;
-        pos.node->prev = last_in;
-    } else {
+    if (&(other.center) != &(this->center)) {
         size_t dist = std::distance(first, last);
-        while (dist > 0) {
-            pos = ++insert(pos, *first);
-            first = other.erase(first);
-            --dist;
-        }
+        this->length_ += dist;
+        other.length_ -= dist;
     }
+    Node *first_out = first.node->prev;
+    Node *last_in = last.node->prev;
+    first_out->next = last.node;
+    last.node->prev = first_out;
+    first.node->prev = pos.node->prev;
+    pos.node->prev->next = first.node;
+    last_in->next = pos.node;
+    pos.node->prev = last_in;
 }
 
 } // namespace exam
