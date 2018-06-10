@@ -100,12 +100,12 @@ public:
             return tmp;
         }
 
-        bool operator==(generic_iterator other)
+        bool operator==(generic_iterator other) const
         {
-            return (node == other.node);
+            return (this->node == other.node);
         }
 
-        bool operator!=(generic_iterator other)
+        bool operator!=(generic_iterator other) const
         {
             return !operator==(other);
         }
