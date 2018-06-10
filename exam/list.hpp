@@ -9,7 +9,6 @@ namespace exam
 template <typename T>
 class List
 {
-
     struct Node {
         Node *next;
         Node *prev;
@@ -45,6 +44,7 @@ public:
     typedef T &reference;
 
     List() noexcept;
+    List(std::initializer_list<T>);
     List(List const &);
     List &operator=(List const &);
     ~List() noexcept;
@@ -76,6 +76,7 @@ public:
 
         generic_iterator operator++()
         {
+            assert(typeid(*node) == typeid(DataNode));
             node = node->next;
             return *this;
         }
@@ -89,6 +90,7 @@ public:
 
         generic_iterator operator--()
         {
+            assert(typeid(*(node->prev)) != typeid(Node));
             node = node->prev;
             return *this;
         }
@@ -112,7 +114,13 @@ public:
 
         reference operator*()
         {
+            assert(typeid(*node) == typeid(DataNode));
             return *node->get_data();
+        }
+        pointer operator->()
+        {
+            assert(typeid(*node) == typeid(DataNode));
+            return node->get_data();
         }
     };
 
@@ -142,6 +150,7 @@ public:
     void clear() noexcept;
     size_t size() const noexcept;
     iterator insert(const_iterator pos, T const &value);
+    iterator insert(const_iterator pos, const_iterator first, const_iterator last);
     iterator erase(const_iterator pos) noexcept;
     iterator erase(const_iterator first, const_iterator last) noexcept;
     void splice(const_iterator pos, List &other, const_iterator first, const_iterator last);
@@ -188,6 +197,12 @@ List<T>::List(List const &other) : center({}), length_(0)
             throw;
         }
     }
+}
+
+template <typename T>
+List<T>::List(std::initializer_list<T> target) : center({}), length_(0)
+{
+    std::for_each(target.begin(), target.end(), [&](T t) { this->push_back(t); });
 }
 
 template <typename T>
@@ -366,6 +381,22 @@ typename List<T>::iterator List<T>::insert(const_iterator pos, T const &value)
     pos.node->prev = new_element;
     ++length_;
     return iterator(new_element);
+}
+
+template <typename T>
+typename List<T>::iterator List<T>::insert(const_iterator pos, const_iterator first, const_iterator last)
+{
+    List<T> temporary_list;
+    try {
+        std::for_each(first, last, [&](T t) { temporary_list.push_back(t); });
+    } catch (std::exception &) {
+        temporary_list.~List<T>();
+        throw;
+    }
+    iterator it = iterator(pos.node);
+    --it;
+    this->splice(pos, temporary_list, temporary_list.begin(), temporary_list.end());
+    return it;
 }
 
 template <typename T>
