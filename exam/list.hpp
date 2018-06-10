@@ -111,16 +111,6 @@ public:
             return tmp;
         }
 
-        friend bool operator==(generic_iterator lhs, generic_iterator rhs)
-        {
-            return (lhs.node == rhs.node);
-        }
-
-        friend bool operator!=(generic_iterator lhs, generic_iterator rhs)
-        {
-            return !operator==(lhs, rhs);
-        }
-
         reference operator*()
         {
             assert(typeid(*node) == typeid(DataNode));
@@ -130,6 +120,23 @@ public:
         {
             assert(typeid(*node) == typeid(DataNode));
             return node->get_data();
+        }
+
+        bool operator==(generic_iterator other)
+        {
+            return this->node == other.node;
+        }
+
+        template <typename Z>
+        friend bool operator==(generic_iterator<Q> lhs, generic_iterator<Z> rhs)
+        {
+            return rhs == lhs;
+        }
+
+        template <typename Z>
+        friend bool operator!=(generic_iterator<Q> lhs, generic_iterator<Z> rhs)
+        {
+            return !(rhs == lhs);
         }
     };
 
