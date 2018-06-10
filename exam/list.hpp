@@ -22,12 +22,21 @@ class List
             assert(false);
             return nullptr;
         }
+        virtual T const *get_data() const
+        {
+            assert(false);
+            return nullptr;
+        }
         virtual ~Node() {}
     };
 
     struct DataNode : Node {
         T value;
         T *get_data()
+        {
+            return &value;
+        }
+        T const *get_data() const
         {
             return &value;
         }
@@ -57,11 +66,11 @@ public:
         typedef Q &reference;
         typedef std::bidirectional_iterator_tag iterator_category;
 
-        Node *node;
         friend class List;
 
     private:
-        generic_iterator(Node *nd) : node(nd)
+        Node *node;
+        generic_iterator(Node nd) : node(nd)
         {
         }
         generic_iterator(Node const *nd) : node(const_cast<Node *>(nd))
@@ -102,14 +111,14 @@ public:
             return tmp;
         }
 
-        bool operator==(generic_iterator other) const
+        friend bool operator==(generic_iterator lhs, generic_iterator rhs)
         {
-            return (this->node == other.node);
+            return (lhs.node == rhs.node);
         }
 
-        bool operator!=(generic_iterator other) const
+        friend bool operator!=(generic_iterator lhs, generic_iterator rhs)
         {
-            return !operator==(other);
+            return !operator==(lhs, rhs);
         }
 
         reference operator*()
@@ -237,6 +246,7 @@ void List<T>::pop_back() noexcept
 template <typename T>
 void List<T>::push_back(T const &t)
 {
+
     Node *new_element = new DataNode(t);
     if (length_ == 0) {
         center.next = new_element;
