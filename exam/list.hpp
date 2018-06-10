@@ -393,10 +393,9 @@ typename List<T>::iterator List<T>::insert(const_iterator pos, const_iterator fi
         temporary_list.~List<T>();
         throw;
     }
-    iterator it = iterator(pos.node);
-    --it;
+    Node *prev = pos.node->prev;
     this->splice(pos, temporary_list, temporary_list.begin(), temporary_list.end());
-    return it;
+    return prev->next;
 }
 
 template <typename T>
