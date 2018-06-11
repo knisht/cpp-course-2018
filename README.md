@@ -17,4 +17,4 @@ Interface:
 Also provided library with algorithms for compressing and decompressing any stream of bits. 
 
 ## End-of-semester exam
-  Implementation of std-like list with major part of std::list's functions. Full bidirectional iterator support and strong exception warranty provided.
+  Implementation of STL-like list with major part of std::list's functions. Full bidirectional iterator support and strong exception warranty provided.
