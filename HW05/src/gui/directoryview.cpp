@@ -1,0 +1,196 @@
+#include "include/gui/directoryview.h"
+#include "include/core/checker.hpp"
+#include <QtWidgets>
+
+namespace gui
+{
+
+// Functional object to biject equal numbers to equal RGB colors
+struct ColorGenerator {
+private:
+    QMap<int, QColor> memoizedColors;
+    QRandomGenerator generator;
+
+public:
+    ColorGenerator() : memoizedColors(), generator() {}
+
+    QColor operator()(int index)
+    {
+        if (!memoizedColors.contains(index)) {
+            memoizedColors[index] =
+                QColor{static_cast<int>(generator.generate() % 256),
+                       static_cast<int>(generator.generate() % 256),
+                       static_cast<int>(generator.generate() % 256), 100};
+        }
+        return memoizedColors[index];
+    }
+} static colorGenerator;
+
+static QString getFileName(QModelIndex const &index)
+{
+    if (index.data().toString() == "/") {
+        return "";
+    } else {
+        return getFileName(index.parent()) + "/" + index.data().toString();
+    }
+}
+
+void DirectoryTreeStyleDelegate::paint(QPainter *painter,
+                                       const QStyleOptionViewItem &option,
+                                       const QModelIndex &index) const
+{
+    if (option.state & QStyle::State_Selected) {
+        QColor color;
+        color.setRgb(0, 153, 255, 150);
+        painter->fillRect(option.rect, color);
+        emit focusOn(index); // correct naming !!!
+    }
+    if (option.state & QStyle::State_MouseOver) {
+        QColor color;
+        color.setRgb(102, 204, 255, 50);
+        painter->fillRect(option.rect, color);
+    }
+    QModelIndex const &primaryFilename = index.siblingAtColumn(0);
+    if (coloredIndices.contains(getFileName(primaryFilename))) {
+        painter->fillRect(
+            option.rect,
+            colorGenerator(coloredIndices[getFileName(primaryFilename)]));
+    }
+    model.fileIcon(index).paint(painter, option.rect, Qt::AlignLeft);
+    QRect rect = option.rect;
+    if (index.column() == 0) {
+        rect.setX(rect.x() +
+                  model.fileIcon(index).availableSizes()[0].rwidth() * 2);
+    }
+    QTextOption opt;
+    opt.setAlignment(Qt::AlignBottom);
+    QString targetText = index.data().toString();
+    painter->drawText(rect, targetText, opt);
+}
+
+void DirectoryTreeStyleDelegate::flushColored() { coloredIndices.clear(); }
+
+void DirectoryTreeStyleDelegate::store(QString const &filename, int group)
+{
+    coloredIndices[filename] = group;
+}
+
+DirectoryView::DirectoryView()
+    : model(), delegate(), root(QDir::currentPath()), emphasedIndex()
+{
+    model.setRootPath("");
+    directoryContents.setModel(&model);
+    const QModelIndex rootIndex = model.index(QDir::cleanPath(root));
+    directoryContents.setRootIndex(rootIndex);
+    directoryContents.setAnimated(true);
+    directoryContents.setIndentation(20);
+    directoryContents.setSortingEnabled(true);
+    this->setSizePolicy(directoryContents.sizePolicy());
+    directoryContents.resize(this->size());
+    directoryContents.setColumnWidth(0, directoryContents.width() / 3);
+    directoryContents.setItemDelegate(&delegate);
+    connect(&delegate, SIGNAL(focusOn(QModelIndex const &)), this,
+            SLOT(emphasizeIndex(QModelIndex const &)));
+    directoryContents.setParent(this);
+}
+
+bool DirectoryView::event(QEvent *ev)
+{
+    if (ev->type() == QEvent::Resize) {
+        directoryContents.resize(this->size());
+    }
+    return QWidget::event(ev);
+}
+
+DirectoryView::~DirectoryView() {}
+
+void DirectoryView::findDuplicatesForEveryone()
+{
+    std::vector<std::vector<std::string>> data =
+        core::group_all(QDir::currentPath().toStdString());
+    delegate.flushColored();
+    int index_count = 0;
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (data[i].size() == 1) {
+            continue;
+        }
+        auto &it = data[i];
+        for (auto jt : it) {
+            delegate.store(QString::fromStdString(jt), index_count);
+        }
+        ++index_count;
+    }
+    repaint();
+}
+
+void DirectoryView::removeFile()
+{
+    if (!emphasedIndex) {
+        qDebug() << "Some file must be selected" << endl;
+        return;
+    }
+    QFileInfo fileInfo(getFileName(emphasedIndex.value().siblingAtColumn(0)));
+    if (fileInfo.exists() && fileInfo.isFile()) {
+        model.remove(emphasedIndex.value());
+    } else {
+        qDebug() << "Failed to delete file" << endl;
+    }
+    repaint();
+}
+
+void DirectoryView::findDuplicatesForParticular()
+{
+    if (!emphasedIndex) {
+        qDebug() << "Some file must be selected" << endl;
+        return;
+    }
+    QFileInfo fileInfo(getFileName(emphasedIndex.value().siblingAtColumn(0)));
+    if (fileInfo.exists() && fileInfo.isFile()) {
+        std::vector<std::string> data =
+            core::group_for(fileInfo.filePath().toStdString());
+        delegate.flushColored();
+        for (auto &it : data) {
+            delegate.store(QString::fromStdString(it), 0);
+        }
+    } else {
+        qDebug() << "Failed to access the file" << endl;
+    }
+    repaint();
+}
+
+void DirectoryView::changeDirUp()
+{
+    if (root == "" || root == "/") {
+        qDebug() << "Attempt to go upper than root" << endl;
+        return;
+    }
+    directoryContents.setRootIndex(directoryContents.rootIndex().parent());
+    root = getFileName(directoryContents.rootIndex());
+}
+
+void DirectoryView::changeDirDown()
+{
+    if (!emphasedIndex) {
+        qDebug() << "Some directory must be selected" << endl;
+        return;
+    }
+    QFileInfo fileInfo(getFileName(emphasedIndex.value().siblingAtColumn(0)));
+    if (fileInfo.exists() && fileInfo.isDir()) {
+        directoryContents.setRootIndex(
+            emphasedIndex.value().siblingAtColumn(0));
+        root = getFileName(emphasedIndex.value().siblingAtColumn(0));
+    } else {
+        qDebug() << "Selected object is not a directory" << endl;
+    }
+}
+
+void DirectoryView::emphasizeIndex(QModelIndex const &a) { emphasedIndex = a; }
+
+void DirectoryView::resize(const QSize &size)
+{
+    directoryContents.resize(size);
+}
+
+QSize DirectoryView::sizeHint() const { return directoryContents.sizeHint(); }
+
+} // namespace gui

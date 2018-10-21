@@ -1,4 +1,4 @@
-#include "../include/checker.hpp"
+#include "include/core/checker.hpp"
 #include <algorithm>
 #include <cstring>
 #include <filesystem>
@@ -29,6 +29,11 @@ std::vector<std::string> get_filenames(std::string const &path,
                 std::vector<std::string> inner =
                     get_filenames(p.path(), depth + 1);
                 filenames.insert(filenames.end(), inner.begin(), inner.end());
+
+            } else if (fs::is_symlink(p)) {
+                if (fs::exists(fs::canonical(p))) {
+                    filenames.push_back(p.path());
+                }
             } else {
                 filenames.push_back(p.path());
             }
@@ -91,7 +96,8 @@ std::vector<std::vector<std::string>> group_everything(std::string const &path,
 {
     // Maybe std::vector will be better cause of small number of files
     std::list<std::pair<std::string, size_t>> filenames;
-    std::string directory = fs::path(path).parent_path();
+    std::string directory =
+        fs::is_directory(path) ? fs::path(path) : fs::path(path).parent_path();
     for (std::string const &filename : get_filenames(directory)) {
         filenames.push_back(make_pair(filename, get_hash(filename)));
     }

@@ -1,23 +1,13 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #include "controlpanel.h"
+#include "directoryview.h"
 #include <QMainWindow>
 #include <QTreeView>
 #include <QtWidgets>
 
-class Overloader : public QStyledItemDelegate
+namespace gui
 {
-    Q_OBJECT
-public:
-    QMap<QString, int> indices;
-    QString root;
-
-public:
-    void paint(QPainter *painter, const QStyleOptionViewItem &option,
-               const QModelIndex &index) const;
-signals:
-    void focused(QModelIndex const &) const;
-};
 
 class MainWindow : public QWidget
 {
@@ -28,26 +18,13 @@ public:
 
     ~MainWindow() override;
 
-protected:
-    void closeEvent(QCloseEvent *event) override;
-
-private slots:
-    void click_to_add();
-    void click_to_remove();
-    void click_to_find_equal_for_one();
-    void click_to_go_upper();
-    void click_to_go_deeper();
-    void emphasize(QModelIndex const &);
-
 private:
-    QTreeView directoryContents;
-    QFileSystemModel *model;
-    ControlPanel panel;
+    void configureActions();
+
     QLayout *layout;
-    Overloader *delegate;
-    QVector<QVector<QString>> indices;
-    QString root;
-    std::optional<QModelIndex> emphasedIndex;
+    ControlPanel panel;
+    DirectoryView view;
 };
+} // namespace gui
 
 #endif

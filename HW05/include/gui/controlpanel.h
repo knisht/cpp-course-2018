@@ -5,27 +5,38 @@
 #include <QPushButton>
 #include <QWidget>
 
+namespace gui
+{
 class ControlPanel : public QWidget
 {
     Q_OBJECT
 public:
     ControlPanel();
     ~ControlPanel() override;
-    QPushButton const &get_add_button();
-    QPushButton const &get_remove_button();
-    QPushButton const &get_search_for_one_button();
-    QPushButton const &go_to_parent_button();
-    QPushButton const &go_to_inner_dir_button();
+signals:
+    void splitEverything();
+    void removeFiles();
+    void splitForOne();
+    void goUpper();
+    void goDeeper();
+
+private slots:
+    void everyFileEmitter();
+    void oneFileEmitter();
+    void removeFileEmitter();
+    void goUpEmitter();
+    void goDownEmitter();
 
 private:
     QLayout *layout;
     QFrame firstLine;
     QFrame secondLine;
-    QPushButton addButton;
+    QPushButton searchForEveryButton;
     QPushButton removeButton;
     QPushButton searchForOneButton;
     QPushButton goToParentButton;
     QPushButton goToInnerDirButton;
 };
 
+} // namespace gui
 #endif // CONTROLPANEL_H

@@ -16,15 +16,15 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 find_package(Qt5Widgets)
 
 add_executable(filechecker
-               ${SOURCE_DIR}/main.cpp
-               ${SOURCE_DIR}/mainwindow.cpp
-               ${SOURCE_DIR}/controlpanel.cpp
-               ${SOURCE_DIR}/checker.cpp
-               ${SOURCE_DIR}/directoryview.cpp
-               ${INCLUDE_DIR}/controlpanel.h
-               ${INCLUDE_DIR}/mainwindow.h
-               ${INCLUDE_DIR}/checker.hpp
-               ${INCLUDE_DIR}/directoryview.h
+               ${SOURCE_DIR}/core/main.cpp
+               ${SOURCE_DIR}/core/checker.cpp
+               ${SOURCE_DIR}/gui/mainwindow.cpp
+               ${SOURCE_DIR}/gui/controlpanel.cpp
+               ${SOURCE_DIR}/gui/directoryview.cpp
+               ${INCLUDE_DIR}/core/checker.hpp
+               ${INCLUDE_DIR}/gui/controlpanel.h
+               ${INCLUDE_DIR}/gui/mainwindow.h
+               ${INCLUDE_DIR}/gui/directoryview.h
                )
 
 #add_executable(core_test

@@ -1,19 +1,29 @@
-#include "../include/controlpanel.h"
+#include "include/gui/controlpanel.h"
 #include <QHBoxLayout>
-
-ControlPanel::ControlPanel()
-    : layout(new QVBoxLayout), addButton(), removeButton(), searchForOneButton()
+namespace gui
 {
-    addButton.setText("Find equal for every file");
+ControlPanel::ControlPanel()
+    : layout(new QVBoxLayout), searchForEveryButton(), removeButton(),
+      searchForOneButton()
+{
+    searchForEveryButton.setText("Find equal for every file");
+    connect(&searchForEveryButton, SIGNAL(pressed()), this,
+            SLOT(everyFileEmitter()));
     removeButton.setText("Remove file");
+    connect(&removeButton, SIGNAL(pressed()), this, SLOT(removeFileEmitter()));
     searchForOneButton.setText("Find equal for one file");
+    connect(&searchForOneButton, SIGNAL(pressed()), this,
+            SLOT(oneFileEmitter()));
     goToParentButton.setText("Go to parent directory");
+    connect(&goToParentButton, SIGNAL(pressed()), this, SLOT(goUpEmitter()));
     goToInnerDirButton.setText("Change root directory");
+    connect(&goToInnerDirButton, SIGNAL(pressed()), this,
+            SLOT(goDownEmitter()));
     firstLine.setFrameShape(QFrame::HLine);
     secondLine.setFrameShape(QFrame::HLine);
     firstLine.setFrameShadow(QFrame::Sunken);
     secondLine.setFrameShadow(QFrame::Sunken);
-    layout->addWidget(&addButton);
+    layout->addWidget(&searchForEveryButton);
     layout->addWidget(&searchForOneButton);
     layout->addWidget(&firstLine);
     layout->addWidget(&removeButton);
@@ -25,19 +35,9 @@ ControlPanel::ControlPanel()
 
 ControlPanel::~ControlPanel() { delete layout; }
 
-QPushButton const &ControlPanel::get_add_button() { return addButton; }
-QPushButton const &ControlPanel::get_remove_button() { return removeButton; }
-QPushButton const &ControlPanel::get_search_for_one_button()
-{
-    return searchForOneButton;
-}
-
-QPushButton const &ControlPanel::go_to_parent_button()
-{
-    return goToParentButton;
-}
-
-QPushButton const &ControlPanel::go_to_inner_dir_button()
-{
-    return goToInnerDirButton;
-}
+void ControlPanel::everyFileEmitter() { emit splitEverything(); }
+void ControlPanel::oneFileEmitter() { emit splitForOne(); }
+void ControlPanel::removeFileEmitter() { emit removeFiles(); }
+void ControlPanel::goUpEmitter() { emit goUpper(); }
+void ControlPanel::goDownEmitter() { emit goDeeper(); }
+} // namespace gui
