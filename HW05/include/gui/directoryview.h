@@ -18,6 +18,7 @@ public:
     void store(QString const &filename, int group);
 signals:
     void focusOn(QModelIndex const &) const;
+    void modelClicked(QModelIndex const &) const;
 };
 
 class DirectoryView : public QWidget
@@ -38,6 +39,7 @@ public slots:
 
 private slots:
     void emphasizeIndex(QModelIndex const &);
+    void changeDirOnClick(QModelIndex const &);
 
 private:
     QTreeView directoryContents;

@@ -83,15 +83,14 @@ DirectoryView::DirectoryView() : model(), delegate(), emphasedIndex()
     const QModelIndex rootIndex =
         model.index(QDir::cleanPath(QDir::currentPath()));
     directoryContents.setRootIndex(rootIndex);
-    /*directoryContents.setAnimated(true);
-    directoryContents.setIndentation(20);
-    directoryContents.setSortingEnabled(true);*/
     this->setSizePolicy(directoryContents.sizePolicy());
     directoryContents.resize(this->size());
     directoryContents.setColumnWidth(0, directoryContents.width() / 3);
     directoryContents.setItemDelegate(&delegate);
     connect(&delegate, SIGNAL(focusOn(QModelIndex const &)), this,
             SLOT(emphasizeIndex(QModelIndex const &)));
+    connect(&directoryContents, SIGNAL(doubleClicked(const QModelIndex &)),
+            this, SLOT(changeDirOnClick(const QModelIndex &)));
     directoryContents.setParent(this);
 }
 
@@ -186,6 +185,14 @@ void DirectoryView::changeDirDown()
 }
 
 void DirectoryView::emphasizeIndex(QModelIndex const &a) { emphasedIndex = a; }
+
+void DirectoryView::changeDirOnClick(QModelIndex const &a)
+{
+    QFileInfo fileInfo(getFileName(emphasedIndex.value().siblingAtColumn(0)));
+    if (fileInfo.exists() && fileInfo.isDir()) {
+        changeDirDown();
+    }
+}
 
 void DirectoryView::resize(const QSize &size)
 {
