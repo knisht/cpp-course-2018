@@ -19,7 +19,6 @@ const size_t max_depth = 10;
 std::vector<std::string> get_filenames(std::string const &path,
                                        size_t depth = 0)
 {
-    // TODO: get directory parsing
     if (depth > max_depth) {
         return {};
     }
@@ -45,6 +44,7 @@ size_t get_hash(std::string const &filepath)
     std::ifstream ifs(filepath, std::ios::binary | std::ios::ate);
     size_t available = static_cast<size_t>(ifs.tellg());
     char buf[CHAR_BUF_SIZE + 1];
+    memset(buf, 0, CHAR_BUF_SIZE);
     buf[CHAR_BUF_SIZE] = '\0';
     size_t result = 0;
     ifs = std::ifstream(filepath, std::ios::binary);
@@ -86,31 +86,55 @@ bool equal(std::pair<std::string, size_t> const &a,
     return true;
 }
 
-std::vector<std::vector<std::string>> group_all(std::string const &path)
+std::vector<std::vector<std::string>> group_everything(std::string const &path,
+                                                       bool need_many_files)
 {
     // Maybe std::vector will be better cause of small number of files
     std::list<std::pair<std::string, size_t>> filenames;
-    for (std::string const &filename : get_filenames(path)) {
+    std::string directory = fs::path(path).parent_path();
+    for (std::string const &filename : get_filenames(directory)) {
         filenames.push_back(make_pair(filename, get_hash(filename)));
     }
     std::vector<std::vector<std::string>> groups;
-    while (!filenames.empty()) {
-        std::pair<std::string, size_t> file = *filenames.begin();
-        filenames.erase(filenames.begin());
-        groups.push_back(std::vector<std::string>{file.first});
-        std::vector<std::list<std::pair<std::string, size_t>>::iterator> iters;
-        for (auto file_iter = filenames.begin(); file_iter != filenames.end();
-             ++file_iter) {
-            if (equal(*file_iter, file)) {
-                groups.back().push_back(file_iter->first);
-                iters.push_back(file_iter);
+    if (need_many_files) {
+        while (!filenames.empty()) {
+            std::pair<std::string, size_t> file = *filenames.begin();
+            filenames.erase(filenames.begin());
+            groups.push_back(std::vector<std::string>{file.first});
+            std::vector<std::list<std::pair<std::string, size_t>>::iterator>
+                iters;
+            for (auto file_iter = filenames.begin();
+                 file_iter != filenames.end(); ++file_iter) {
+                if (equal(*file_iter, file)) {
+                    groups.back().push_back(file_iter->first);
+                    iters.push_back(file_iter);
+                }
+            }
+            for (auto iter : iters) {
+                filenames.erase(iter);
             }
         }
-        for (auto iter : iters) {
-            filenames.erase(iter);
+    } else {
+        auto mainfile = std::find(filenames.begin(), filenames.end(),
+                                  make_pair(path, get_hash(path)));
+        groups.push_back({});
+        for (auto &&it : filenames) {
+            if (equal(it, *mainfile)) {
+                groups.back().push_back(it.first);
+            }
         }
     }
     return groups;
+}
+
+std::vector<std::string> group_for(std::string const &path)
+{
+    return group_everything(path, false)[0];
+}
+
+std::vector<std::vector<std::string>> group_all(std::string const &path)
+{
+    return group_everything(path, true);
 }
 
 } // namespace core

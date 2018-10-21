@@ -18,11 +18,13 @@ find_package(Qt5Widgets)
 add_executable(filechecker
                ${SOURCE_DIR}/main.cpp
                ${SOURCE_DIR}/mainwindow.cpp
-               ${SOURCE_DIR}/mainwindow.h
                ${SOURCE_DIR}/controlpanel.cpp
-               ${SOURCE_DIR}/controlpanel.h
                ${SOURCE_DIR}/checker.cpp
+               ${SOURCE_DIR}/directoryview.cpp
+               ${INCLUDE_DIR}/controlpanel.h
+               ${INCLUDE_DIR}/mainwindow.h
                ${INCLUDE_DIR}/checker.hpp
+               ${INCLUDE_DIR}/directoryview.h
                )
 
 #add_executable(core_test

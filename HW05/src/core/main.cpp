@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+#include "../include/mainwindow.h"
 #include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 
     QCoreApplication::setApplicationVersion(QT_VERSION_STR);
 
-    MainWindow window = MainWindow(QDir::currentPath());
+    MainWindow window = MainWindow();
     window.show();
     return app.exec();
 }
