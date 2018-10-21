@@ -1,2 +1,9 @@
 build*
 *.user
+bin
+CMakeCache.txt
+Makefile
+*.out
+CMakeFiles
+*.cmake
+*.o
