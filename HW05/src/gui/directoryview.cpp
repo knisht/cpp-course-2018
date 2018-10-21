@@ -26,12 +26,13 @@ public:
     }
 } static colorGenerator;
 
-static QString getFileName(QModelIndex const &index)
+static QString getFileName(QModelIndex const &index, int is_directory = false)
 {
     if (index.data().toString() == "/") {
-        return "";
+        return "/";
     } else {
-        return getFileName(index.parent()) + "/" + index.data().toString();
+        return getFileName(index.parent(), true) + index.data().toString() +
+               (is_directory ? "/" : "");
     }
 }
 
@@ -75,16 +76,16 @@ void DirectoryTreeStyleDelegate::store(QString const &filename, int group)
     coloredIndices[filename] = group;
 }
 
-DirectoryView::DirectoryView()
-    : model(), delegate(), root(QDir::currentPath()), emphasedIndex()
+DirectoryView::DirectoryView() : model(), delegate(), emphasedIndex()
 {
     model.setRootPath("");
     directoryContents.setModel(&model);
-    const QModelIndex rootIndex = model.index(QDir::cleanPath(root));
+    const QModelIndex rootIndex =
+        model.index(QDir::cleanPath(QDir::currentPath()));
     directoryContents.setRootIndex(rootIndex);
-    directoryContents.setAnimated(true);
+    /*directoryContents.setAnimated(true);
     directoryContents.setIndentation(20);
-    directoryContents.setSortingEnabled(true);
+    directoryContents.setSortingEnabled(true);*/
     this->setSizePolicy(directoryContents.sizePolicy());
     directoryContents.resize(this->size());
     directoryContents.setColumnWidth(0, directoryContents.width() / 3);
@@ -98,6 +99,7 @@ bool DirectoryView::event(QEvent *ev)
 {
     if (ev->type() == QEvent::Resize) {
         directoryContents.resize(this->size());
+        directoryContents.setColumnWidth(0, directoryContents.width() / 3);
     }
     return QWidget::event(ev);
 }
@@ -106,8 +108,8 @@ DirectoryView::~DirectoryView() {}
 
 void DirectoryView::findDuplicatesForEveryone()
 {
-    std::vector<std::vector<std::string>> data =
-        core::group_all(QDir::currentPath().toStdString());
+    std::vector<std::vector<std::string>> data = core::group_all(
+        getFileName(directoryContents.rootIndex()).toStdString());
     delegate.flushColored();
     int index_count = 0;
     for (size_t i = 0; i < data.size(); ++i) {
@@ -160,12 +162,12 @@ void DirectoryView::findDuplicatesForParticular()
 
 void DirectoryView::changeDirUp()
 {
+    QString root = getFileName(directoryContents.rootIndex());
     if (root == "" || root == "/") {
         qDebug() << "Attempt to go upper than root" << endl;
         return;
     }
     directoryContents.setRootIndex(directoryContents.rootIndex().parent());
-    root = getFileName(directoryContents.rootIndex());
 }
 
 void DirectoryView::changeDirDown()
@@ -178,7 +180,6 @@ void DirectoryView::changeDirDown()
     if (fileInfo.exists() && fileInfo.isDir()) {
         directoryContents.setRootIndex(
             emphasedIndex.value().siblingAtColumn(0));
-        root = getFileName(emphasedIndex.value().siblingAtColumn(0));
     } else {
         qDebug() << "Selected object is not a directory" << endl;
     }

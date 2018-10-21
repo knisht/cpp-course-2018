@@ -43,8 +43,6 @@ private:
     QTreeView directoryContents;
     QFileSystemModel model;
     DirectoryTreeStyleDelegate delegate;
-    QVector<QVector<QString>> indices;
-    QString root;
     std::optional<QModelIndex> emphasedIndex;
 };
 } // namespace gui
