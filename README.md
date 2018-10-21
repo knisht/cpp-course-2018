@@ -10,11 +10,15 @@ ITMO cpp-course hw's
 ## 4. File compress tool based on Huffman compressing algorithm
   Command-line tool for compressing files of any size (even if they are too big for RAM). 
   
-Interface: 
-`pack <src>[to <dst>]`
-`unpack <src>[to <dst>]`
+Interface:  
+`pack <src>[to <dst>]`  
+`unpack <src>[to <dst>]`  
 
 Also provided library with algorithms for compressing and decompressing any stream of bits. 
 
 ## End-of-semester exam
   Implementation of STL-like list with major part of std::list's functions. Full bidirectional iterator support and strong exception warranty provided.
+
+## 5. GUI tool for detecting equal files in your filesystem.  
+  This quite useful tool can pretty-print your directory content and suggest you to remove duplicates.  
+Written with Qt framework.
