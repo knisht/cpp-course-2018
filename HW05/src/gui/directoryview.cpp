@@ -76,7 +76,7 @@ void DirectoryTreeStyleDelegate::store(QString const &filename, int group)
     coloredIndices[filename] = group;
 }
 
-DirectoryView::DirectoryView() : model(), delegate(), emphasedIndex()
+DirectoryView::DirectoryView() : model(), delegate(), emphasizedIndex()
 {
     model.setRootPath("");
     directoryContents.setModel(&model);
@@ -126,32 +126,46 @@ void DirectoryView::findDuplicatesForEveryone()
 
 void DirectoryView::removeFile()
 {
-    if (!emphasedIndex) {
+    if (!emphasizedIndex) {
         qDebug() << "Some file must be selected" << endl;
         return;
     }
-    QFileInfo fileInfo(getFileName(emphasedIndex.value().siblingAtColumn(0)));
+    QFileInfo fileInfo(getFileName(emphasizedIndex.value().siblingAtColumn(0)));
     if (fileInfo.exists() && fileInfo.isFile()) {
-        model.remove(emphasedIndex.value());
+        model.remove(emphasizedIndex.value());
     } else {
         qDebug() << "Failed to delete file" << endl;
     }
     repaint();
 }
 
+void DirectoryView::massiveExpand(QModelIndex const &limit,
+                                  QModelIndex const &current)
+{
+    if (limit == current) {
+        return;
+    }
+    directoryContents.expand(current);
+    massiveExpand(limit, current.parent());
+}
+
 void DirectoryView::findDuplicatesForParticular()
 {
-    if (!emphasedIndex) {
+    if (!emphasizedIndex) {
         qDebug() << "Some file must be selected" << endl;
         return;
     }
-    QFileInfo fileInfo(getFileName(emphasedIndex.value().siblingAtColumn(0)));
+    QFileInfo fileInfo(getFileName(emphasizedIndex.value().siblingAtColumn(0)));
     if (fileInfo.exists() && fileInfo.isFile()) {
-        std::vector<std::string> data =
-            core::group_for(fileInfo.filePath().toStdString());
+        std::vector<std::string> data = core::group_for(
+            fileInfo.filePath().toStdString(),
+            getFileName(directoryContents.rootIndex()).toStdString());
         delegate.flushColored();
         for (auto &it : data) {
             delegate.store(QString::fromStdString(it), 0);
+            massiveExpand(
+                directoryContents.rootIndex(),
+                model.index(QDir::cleanPath(QString::fromStdString(it))));
         }
     } else {
         qDebug() << "Failed to access the file" << endl;
@@ -171,24 +185,27 @@ void DirectoryView::changeDirUp()
 
 void DirectoryView::changeDirDown()
 {
-    if (!emphasedIndex) {
+    if (!emphasizedIndex) {
         qDebug() << "Some directory must be selected" << endl;
         return;
     }
-    QFileInfo fileInfo(getFileName(emphasedIndex.value().siblingAtColumn(0)));
+    QFileInfo fileInfo(getFileName(emphasizedIndex.value().siblingAtColumn(0)));
     if (fileInfo.exists() && fileInfo.isDir()) {
         directoryContents.setRootIndex(
-            emphasedIndex.value().siblingAtColumn(0));
+            emphasizedIndex.value().siblingAtColumn(0));
     } else {
         qDebug() << "Selected object is not a directory" << endl;
     }
 }
 
-void DirectoryView::emphasizeIndex(QModelIndex const &a) { emphasedIndex = a; }
+void DirectoryView::emphasizeIndex(QModelIndex const &a)
+{
+    emphasizedIndex = a;
+}
 
 void DirectoryView::changeDirOnClick(QModelIndex const &a)
 {
-    QFileInfo fileInfo(getFileName(emphasedIndex.value().siblingAtColumn(0)));
+    QFileInfo fileInfo(getFileName(a));
     if (fileInfo.exists() && fileInfo.isDir()) {
         changeDirDown();
     }

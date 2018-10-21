@@ -21,7 +21,7 @@ public:
 private:
     void configureActions();
 
-    QLayout *layout;
+    std::unique_ptr<QLayout> layout;
     ControlPanel panel;
     DirectoryView view;
 };

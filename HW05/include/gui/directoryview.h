@@ -42,10 +42,11 @@ private slots:
     void changeDirOnClick(QModelIndex const &);
 
 private:
+    void massiveExpand(QModelIndex const &, QModelIndex const &);
     QTreeView directoryContents;
     QFileSystemModel model;
     DirectoryTreeStyleDelegate delegate;
-    std::optional<QModelIndex> emphasedIndex;
+    std::optional<QModelIndex> emphasizedIndex;
 };
 } // namespace gui
 #endif

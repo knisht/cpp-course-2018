@@ -15,18 +15,16 @@ MainWindow::MainWindow() : layout(new QHBoxLayout)
 {
     const QSize availableSize =
         QApplication::desktop()->availableGeometry(this).size() * 2 / 3;
-    resize(availableSize); // CORRECT
+    resize(availableSize);
     setWindowTitle("File checker");
-    //    view.resize({availableSize.width() - 250, availableSize.height()});
     layout->addWidget(&view);
     layout->addWidget(&panel);
     layout->setSizeConstraint(QLayout::SetMaximumSize);
-    setLayout(layout);
-    //    panel.setMaximumWidth(200);
+    setLayout(layout.get());
     configureActions();
 }
 
-MainWindow::~MainWindow() { delete layout; }
+MainWindow::~MainWindow() {}
 
 void MainWindow::configureActions()
 {
