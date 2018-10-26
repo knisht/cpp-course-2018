@@ -5,6 +5,7 @@
 #include <QMainWindow>
 #include <QTreeView>
 #include <QtWidgets>
+#include <memory>
 
 namespace gui
 {
