@@ -4,6 +4,7 @@
 #include <QFrame>
 #include <QPushButton>
 #include <QWidget>
+#include <memory>
 
 namespace gui
 {
@@ -19,6 +20,7 @@ signals:
     void splitForOne();
     void goUpper();
     void goDeeper();
+    void collapseAll();
 
 private slots:
     void everyFileEmitter();
@@ -26,9 +28,10 @@ private slots:
     void removeFileEmitter();
     void goUpEmitter();
     void goDownEmitter();
+    void collapseAllEmitter();
 
 private:
-    QLayout *layout;
+    std::unique_ptr<QLayout> layout;
     QFrame firstLine;
     QFrame secondLine;
     QPushButton searchForEveryButton;
@@ -36,6 +39,7 @@ private:
     QPushButton searchForOneButton;
     QPushButton goToParentButton;
     QPushButton goToInnerDirButton;
+    QPushButton collapseAllButton;
 };
 
 } // namespace gui

@@ -36,6 +36,7 @@ void MainWindow::configureActions()
             SLOT(findDuplicatesForParticular()));
     connect(&panel, SIGNAL(goUpper()), &view, SLOT(changeDirUp()));
     connect(&panel, SIGNAL(goDeeper()), &view, SLOT(changeDirDown()));
+    connect(&panel, SIGNAL(collapseAll()), &view, SLOT(collapseEverything()));
 }
 
 } // namespace gui

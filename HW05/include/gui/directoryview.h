@@ -9,9 +9,11 @@ class DirectoryTreeStyleDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
     QMap<QString, int> coloredIndices;
-    QFileSystemModel model;
+    QFileSystemModel const *model;
 
 public:
+    DirectoryTreeStyleDelegate(QFileSystemModel const *model);
+
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const;
     void flushColored();
@@ -36,13 +38,14 @@ public slots:
     void findDuplicatesForParticular();
     void changeDirUp();
     void changeDirDown();
+    void collapseEverything();
 
 private slots:
     void emphasizeIndex(QModelIndex const &);
     void changeDirOnClick(QModelIndex const &);
 
 private:
-    void massiveExpand(QModelIndex const &, QModelIndex const &);
+    void deepExpand(QModelIndex const &, QModelIndex const &);
     QTreeView directoryContents;
     QFileSystemModel model;
     DirectoryTreeStyleDelegate delegate;

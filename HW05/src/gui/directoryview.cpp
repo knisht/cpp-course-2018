@@ -6,6 +6,8 @@ namespace gui
 {
 
 // Functional object to biject equal numbers to equal RGB colors
+namespace
+{
 struct ColorGenerator {
 private:
     QMap<int, QColor> memoizedColors;
@@ -25,15 +27,11 @@ public:
         return memoizedColors[index];
     }
 } static colorGenerator;
-
-static QString getFileName(QModelIndex const &index, int is_directory = false)
+} // namespace
+DirectoryTreeStyleDelegate::DirectoryTreeStyleDelegate(
+    QFileSystemModel const *model)
 {
-    if (index.data().toString() == "/") {
-        return "/";
-    } else {
-        return getFileName(index.parent(), true) + index.data().toString() +
-               (is_directory ? "/" : "");
-    }
+    this->model = model;
 }
 
 void DirectoryTreeStyleDelegate::paint(QPainter *painter,
@@ -44,7 +42,7 @@ void DirectoryTreeStyleDelegate::paint(QPainter *painter,
         QColor color;
         color.setRgb(0, 153, 255, 150);
         painter->fillRect(option.rect, color);
-        emit focusOn(index); // correct naming !!!
+        emit focusOn(index);
     }
     if (option.state & QStyle::State_MouseOver) {
         QColor color;
@@ -52,21 +50,32 @@ void DirectoryTreeStyleDelegate::paint(QPainter *painter,
         painter->fillRect(option.rect, color);
     }
     QModelIndex const &primaryFilename = index.siblingAtColumn(0);
-    if (coloredIndices.contains(getFileName(primaryFilename))) {
+    if (coloredIndices.contains(model->filePath(primaryFilename))) {
         painter->fillRect(
             option.rect,
-            colorGenerator(coloredIndices[getFileName(primaryFilename)]));
+            colorGenerator(coloredIndices[model->filePath(primaryFilename)]));
     }
-    model.fileIcon(index).paint(painter, option.rect, Qt::AlignLeft);
+    model->fileIcon(index).paint(painter, option.rect, Qt::AlignLeft);
     QRect rect = option.rect;
+    QString targetText = index.data().toString();
+    QFont font = painter->font();
     if (index.column() == 0) {
+        QFileInfo info(model->filePath(primaryFilename));
+        if (info.isSymLink()) {
+            QFont font = painter->font();
+            font.setItalic(true);
+            painter->setFont(font);
+            targetText +=
+                " → " + info.dir().relativeFilePath(info.symLinkTarget());
+        }
         rect.setX(rect.x() +
-                  model.fileIcon(index).availableSizes()[0].rwidth() * 2);
+                  model->fileIcon(index).availableSizes()[0].rwidth() * 2);
     }
     QTextOption opt;
-    opt.setAlignment(Qt::AlignBottom);
-    QString targetText = index.data().toString();
+    opt.setWrapMode(QTextOption::WrapMode::NoWrap);
+    opt.setAlignment(Qt::AlignVCenter);
     painter->drawText(rect, targetText, opt);
+    painter->setFont(font);
 }
 
 void DirectoryTreeStyleDelegate::flushColored() { coloredIndices.clear(); }
@@ -76,16 +85,17 @@ void DirectoryTreeStyleDelegate::store(QString const &filename, int group)
     coloredIndices[filename] = group;
 }
 
-DirectoryView::DirectoryView() : model(), delegate(), emphasizedIndex()
+DirectoryView::DirectoryView() : model(), delegate(&model), emphasizedIndex()
 {
     model.setRootPath("");
+    model.setFilter(QDir::Filter::AllEntries | QDir::Hidden);
     directoryContents.setModel(&model);
     const QModelIndex rootIndex =
         model.index(QDir::cleanPath(QDir::currentPath()));
     directoryContents.setRootIndex(rootIndex);
     this->setSizePolicy(directoryContents.sizePolicy());
     directoryContents.resize(this->size());
-    directoryContents.setColumnWidth(0, directoryContents.width() / 3);
+    directoryContents.setColumnWidth(0, directoryContents.width() / 2);
     directoryContents.setItemDelegate(&delegate);
     connect(&delegate, SIGNAL(focusOn(QModelIndex const &)), this,
             SLOT(emphasizeIndex(QModelIndex const &)));
@@ -98,7 +108,7 @@ bool DirectoryView::event(QEvent *ev)
 {
     if (ev->type() == QEvent::Resize) {
         directoryContents.resize(this->size());
-        directoryContents.setColumnWidth(0, directoryContents.width() / 3);
+        directoryContents.setColumnWidth(0, directoryContents.width() / 2);
     }
     return QWidget::event(ev);
 }
@@ -108,7 +118,7 @@ DirectoryView::~DirectoryView() {}
 void DirectoryView::findDuplicatesForEveryone()
 {
     std::vector<std::vector<std::string>> data = core::group_all(
-        getFileName(directoryContents.rootIndex()).toStdString());
+        model.filePath(directoryContents.rootIndex()).toStdString());
     delegate.flushColored();
     int index_count = 0;
     for (size_t i = 0; i < data.size(); ++i) {
@@ -116,8 +126,11 @@ void DirectoryView::findDuplicatesForEveryone()
             continue;
         }
         auto &it = data[i];
-        for (auto jt : it) {
+        for (auto &jt : it) {
             delegate.store(QString::fromStdString(jt), index_count);
+            deepExpand(
+                directoryContents.rootIndex(),
+                model.index(QDir::cleanPath(QString::fromStdString(jt))));
         }
         ++index_count;
     }
@@ -130,7 +143,8 @@ void DirectoryView::removeFile()
         qDebug() << "Some file must be selected" << endl;
         return;
     }
-    QFileInfo fileInfo(getFileName(emphasizedIndex.value().siblingAtColumn(0)));
+    QFileInfo fileInfo(
+        model.filePath(emphasizedIndex.value().siblingAtColumn(0)));
     if (fileInfo.exists() && fileInfo.isFile()) {
         model.remove(emphasizedIndex.value());
     } else {
@@ -139,14 +153,14 @@ void DirectoryView::removeFile()
     repaint();
 }
 
-void DirectoryView::massiveExpand(QModelIndex const &limit,
-                                  QModelIndex const &current)
+void DirectoryView::deepExpand(QModelIndex const &limit,
+                               QModelIndex const &current)
 {
-    if (limit == current) {
+    if (limit == current || model.filePath(current) == "/") {
         return;
     }
     directoryContents.expand(current);
-    massiveExpand(limit, current.parent());
+    deepExpand(limit, current.parent());
 }
 
 void DirectoryView::findDuplicatesForParticular()
@@ -155,15 +169,17 @@ void DirectoryView::findDuplicatesForParticular()
         qDebug() << "Some file must be selected" << endl;
         return;
     }
-    QFileInfo fileInfo(getFileName(emphasizedIndex.value().siblingAtColumn(0)));
+    QFileInfo fileInfo(
+        model.filePath(emphasizedIndex.value().siblingAtColumn(0)));
     if (fileInfo.exists() && fileInfo.isFile()) {
+
         std::vector<std::string> data = core::group_for(
-            fileInfo.filePath().toStdString(),
-            getFileName(directoryContents.rootIndex()).toStdString());
+            fileInfo.canonicalFilePath().toStdString(),
+            model.filePath(directoryContents.rootIndex()).toStdString());
         delegate.flushColored();
         for (auto &it : data) {
             delegate.store(QString::fromStdString(it), 0);
-            massiveExpand(
+            deepExpand(
                 directoryContents.rootIndex(),
                 model.index(QDir::cleanPath(QString::fromStdString(it))));
         }
@@ -175,7 +191,7 @@ void DirectoryView::findDuplicatesForParticular()
 
 void DirectoryView::changeDirUp()
 {
-    QString root = getFileName(directoryContents.rootIndex());
+    QString root = model.filePath(directoryContents.rootIndex());
     if (root == "" || root == "/") {
         qDebug() << "Attempt to go upper than root" << endl;
         return;
@@ -189,12 +205,20 @@ void DirectoryView::changeDirDown()
         qDebug() << "Some directory must be selected" << endl;
         return;
     }
-    QFileInfo fileInfo(getFileName(emphasizedIndex.value().siblingAtColumn(0)));
+    QString path = model.filePath(emphasizedIndex.value().siblingAtColumn(0));
+    QFileInfo fileInfo(path);
     if (fileInfo.exists() && fileInfo.isDir()) {
-        directoryContents.setRootIndex(
-            emphasizedIndex.value().siblingAtColumn(0));
+        directoryContents.setRootIndex(model.index(path));
     } else {
         qDebug() << "Selected object is not a directory" << endl;
+    }
+}
+
+void DirectoryView::collapseEverything()
+{
+    directoryContents.collapseAll();
+    if (emphasizedIndex) {
+        deepExpand(directoryContents.rootIndex(), emphasizedIndex.value());
     }
 }
 
@@ -205,7 +229,7 @@ void DirectoryView::emphasizeIndex(QModelIndex const &a)
 
 void DirectoryView::changeDirOnClick(QModelIndex const &a)
 {
-    QFileInfo fileInfo(getFileName(a));
+    QFileInfo fileInfo(model.filePath(a));
     if (fileInfo.exists() && fileInfo.isDir()) {
         changeDirDown();
     }

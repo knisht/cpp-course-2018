@@ -4,7 +4,7 @@ namespace gui
 {
 ControlPanel::ControlPanel()
     : layout(new QVBoxLayout), searchForEveryButton(), removeButton(),
-      searchForOneButton()
+      searchForOneButton(), collapseAllButton()
 {
     searchForEveryButton.setText("Find equal for every file");
     connect(&searchForEveryButton, SIGNAL(pressed()), this,
@@ -19,6 +19,9 @@ ControlPanel::ControlPanel()
     goToInnerDirButton.setText("Change root directory");
     connect(&goToInnerDirButton, SIGNAL(pressed()), this,
             SLOT(goDownEmitter()));
+    collapseAllButton.setText("Collapse All");
+    connect(&collapseAllButton, SIGNAL(pressed()), this,
+            SLOT(collapseAllEmitter()));
     firstLine.setFrameShape(QFrame::HLine);
     secondLine.setFrameShape(QFrame::HLine);
     firstLine.setFrameShadow(QFrame::Sunken);
@@ -30,14 +33,16 @@ ControlPanel::ControlPanel()
     layout->addWidget(&secondLine);
     layout->addWidget(&goToParentButton);
     layout->addWidget(&goToInnerDirButton);
-    setLayout(layout);
+    layout->addWidget(&collapseAllButton);
+    setLayout(layout.get());
 }
 
-ControlPanel::~ControlPanel() { delete layout; }
+ControlPanel::~ControlPanel() {}
 
 void ControlPanel::everyFileEmitter() { emit splitEverything(); }
 void ControlPanel::oneFileEmitter() { emit splitForOne(); }
 void ControlPanel::removeFileEmitter() { emit removeFiles(); }
 void ControlPanel::goUpEmitter() { emit goUpper(); }
 void ControlPanel::goDownEmitter() { emit goDeeper(); }
+void ControlPanel::collapseAllEmitter() { emit collapseAll(); }
 } // namespace gui

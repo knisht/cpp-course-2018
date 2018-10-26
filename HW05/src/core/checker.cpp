@@ -6,40 +6,48 @@
 #include <functional>
 #include <iostream>
 #include <list>
+#include <queue>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 namespace core
 {
-const size_t CHAR_BUF_SIZE = 65536;
+const size_t CHAR_BUF_SIZE = 1 << 20;
+
+namespace
+{
 
 namespace fs = std::filesystem;
-
-const size_t max_depth = 10;
-
-std::vector<std::string> get_filenames(std::string const &path,
-                                       size_t depth = 0)
+// bfs
+std::vector<std::string> get_filenames(std::string const &path)
 {
-    if (depth > max_depth) {
-        return {};
-    }
     std::vector<std::string> filenames;
-    for (auto &p : fs::directory_iterator(path)) {
+    std::queue<std::string> queue;
+    std::unordered_set<std::string> processed_filenames;
+    queue.push(path);
+    while (!queue.empty()) {
         try {
-            if (fs::is_directory(p)) {
-                std::vector<std::string> inner =
-                    get_filenames(p.path(), depth + 1);
-                filenames.insert(filenames.end(), inner.begin(), inner.end());
-
-            } else if (fs::is_symlink(p)) {
-                if (fs::exists(fs::canonical(p))) {
-                    filenames.push_back(p.path());
+            fs::directory_iterator entries(queue.front());
+            for (auto &p : entries) {
+                try {
+                    fs::path canonical_path = fs::canonical(p);
+                    if (processed_filenames.count(canonical_path) != 0) {
+                        continue;
+                    }
+                    if (fs::is_directory(canonical_path)) {
+                        queue.push(canonical_path);
+                    } else {
+                        filenames.push_back(canonical_path);
+                    }
+                    processed_filenames.insert(canonical_path);
+                } catch (fs::filesystem_error &e) {
+                    std::cerr << e.what() << std::endl;
                 }
-            } else {
-                filenames.push_back(p.path());
             }
-        } catch (fs::filesystem_error e) {
+        } catch (fs::filesystem_error &e) {
             std::cerr << e.what() << std::endl;
         }
+        queue.pop();
     }
     return filenames;
 }
@@ -91,8 +99,8 @@ bool equal(std::pair<std::string, size_t> const &a,
     return true;
 }
 
-std::vector<std::vector<std::string>>
-group_everything(std::string const &path, std::string const &root = "")
+std::vector<std::vector<std::string>> static group_everything(
+    std::string const &path, std::string const &root = "")
 {
     // Maybe std::vector will be better cause of small number of files
     std::list<std::pair<std::string, size_t>> filenames;
@@ -131,6 +139,7 @@ group_everything(std::string const &path, std::string const &root = "")
     }
     return groups;
 }
+} // namespace
 
 std::vector<std::string> group_for(std::string const &path,
                                    const std::string &root)
