@@ -48,4 +48,4 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 #target_link_libraries(core_test stdc++fs -lpthread)
-target_link_libraries(filechecker stdc++fs Qt5::Widgets -lpthread)
+target_link_libraries(filechecker stdc++fs Qt5::Widgets -lpthread -lstdc++fs)
