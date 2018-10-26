@@ -110,6 +110,10 @@ std::vector<std::vector<std::string>> static group_everything(
         filenames.push_back(make_pair(filename, get_hash(filename)));
     }
     std::vector<std::vector<std::string>> groups;
+    filenames.sort([](std::pair<std::string, size_t> const &a,
+                      std::pair<std::string, size_t> const &b) {
+        return a.second < b.second;
+    });
     if (root == "") {
         while (!filenames.empty()) {
             std::pair<std::string, size_t> file = *filenames.begin();
@@ -119,6 +123,9 @@ std::vector<std::vector<std::string>> static group_everything(
                 iters;
             for (auto file_iter = filenames.begin();
                  file_iter != filenames.end(); ++file_iter) {
+                if (file_iter->second != file.second) {
+                    break;
+                }
                 if (equal(*file_iter, file)) {
                     groups.back().push_back(file_iter->first);
                     iters.push_back(file_iter);

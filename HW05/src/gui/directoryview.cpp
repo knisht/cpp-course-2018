@@ -11,17 +11,18 @@ namespace
 struct ColorGenerator {
 private:
     QMap<int, QColor> memoizedColors;
-    //    QRandomGenerator generator;
+    QRandomGenerator generator;
 
 public:
-    ColorGenerator() : memoizedColors() /*, generator() */ {}
+    ColorGenerator() : memoizedColors(), generator() {}
 
     QColor operator()(int index)
     {
         if (!memoizedColors.contains(index)) {
-            memoizedColors[index] = QColor{static_cast<int>(rand() % 256),
-                                           static_cast<int>(rand() % 256),
-                                           static_cast<int>(rand() % 256), 100};
+            memoizedColors[index] =
+                QColor{static_cast<int>(generator.generate() % 256),
+                       static_cast<int>(generator.generate() % 256),
+                       static_cast<int>(generator.generate() % 256), 100};
         }
         return memoizedColors[index];
     }
@@ -112,7 +113,7 @@ bool DirectoryView::event(QEvent *ev)
     return QWidget::event(ev);
 }
 
-DirectoryView::~DirectoryView() {}
+DirectoryView::~DirectoryView()=default;
 
 void DirectoryView::findDuplicatesForEveryone()
 {
