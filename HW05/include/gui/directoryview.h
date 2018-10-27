@@ -15,7 +15,7 @@ public:
     DirectoryTreeStyleDelegate(QFileSystemModel const *model);
 
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
-               const QModelIndex &index) const;
+               const QModelIndex &index) const override;
     void flushColored();
     void store(QString const &filename, int group);
 signals:

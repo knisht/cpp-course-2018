@@ -88,7 +88,7 @@ void DirectoryTreeStyleDelegate::store(QString const &filename, int group)
 DirectoryView::DirectoryView() : model(), delegate(&model), emphasizedIndex()
 {
     model.setRootPath("");
-    model.setFilter(QDir::Filter::AllEntries | QDir::Hidden);
+    model.setFilter(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot);
     directoryContents.setModel(&model);
     const QModelIndex rootIndex =
         model.index(QDir::cleanPath(QDir::currentPath()));
@@ -113,7 +113,7 @@ bool DirectoryView::event(QEvent *ev)
     return QWidget::event(ev);
 }
 
-DirectoryView::~DirectoryView()=default;
+DirectoryView::~DirectoryView() = default;
 
 void DirectoryView::findDuplicatesForEveryone()
 {
