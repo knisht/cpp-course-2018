@@ -42,11 +42,11 @@ std::vector<std::string> get_filenames(std::string const &path)
                     }
                     processed_filenames.insert(canonical_path);
                 } catch (fs::filesystem_error &e) {
-                    std::cerr << e.what() << std::endl;
+                    std::cerr << "[ERROR] " << e.what() << std::endl;
                 }
             }
         } catch (fs::filesystem_error &e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << "[ERROR] " << e.what() << std::endl;
         }
         queue.pop();
     }
@@ -103,6 +103,7 @@ bool equal(std::pair<std::string, size_t> const &a,
 std::vector<std::vector<std::string>> static group_everything(
     std::string const &path, std::string const &root = "")
 {
+    clock_t begin = clock();
     // Maybe std::vector will be better cause of small number of files
     std::list<std::pair<std::string, size_t>> filenames;
     std::string directory = root == "" ? path : root;
@@ -145,6 +146,8 @@ std::vector<std::vector<std::string>> static group_everything(
             }
         }
     }
+    std::cout << "[INFO] Scanning " << directory << " finished in "
+              << double(clock() - begin) / CLOCKS_PER_SEC << "s" << std::endl;
     return groups;
 }
 } // namespace

@@ -140,7 +140,7 @@ void DirectoryView::findDuplicatesForEveryone()
 void DirectoryView::removeFile()
 {
     if (!emphasizedIndex) {
-        qDebug() << "Some file must be selected" << endl;
+        qDebug() << "[INFO] Some file must be selected" << endl;
         return;
     }
     QFileInfo fileInfo(
@@ -148,7 +148,7 @@ void DirectoryView::removeFile()
     if (fileInfo.exists() && fileInfo.isFile()) {
         model.remove(emphasizedIndex.value());
     } else {
-        qDebug() << "Failed to delete file" << endl;
+        qDebug() << "[ERROR] Failed to delete file" << endl;
     }
     repaint();
 }
@@ -166,7 +166,7 @@ void DirectoryView::deepExpand(QModelIndex const &limit,
 void DirectoryView::findDuplicatesForParticular()
 {
     if (!emphasizedIndex) {
-        qDebug() << "Some file must be selected" << endl;
+        qDebug() << "[INFO] Some file must be selected" << endl;
         return;
     }
     QFileInfo fileInfo(
@@ -184,7 +184,7 @@ void DirectoryView::findDuplicatesForParticular()
                 model.index(QDir::cleanPath(QString::fromStdString(it))));
         }
     } else {
-        qDebug() << "Failed to access the file" << endl;
+        qDebug() << "[ERROR] Failed to access the file" << endl;
     }
     repaint();
 }
@@ -193,7 +193,7 @@ void DirectoryView::changeDirUp()
 {
     QString root = model.filePath(directoryContents.rootIndex());
     if (root == "" || root == "/") {
-        qDebug() << "Attempt to go upper than root" << endl;
+        qDebug() << "[ERROR] Attempt to go upper than root" << endl;
         return;
     }
     directoryContents.setRootIndex(directoryContents.rootIndex().parent());
@@ -202,7 +202,7 @@ void DirectoryView::changeDirUp()
 void DirectoryView::changeDirDown()
 {
     if (!emphasizedIndex) {
-        qDebug() << "Some directory must be selected" << endl;
+        qDebug() << "[INFO] Some directory must be selected" << endl;
         return;
     }
     QString path = model.filePath(emphasizedIndex.value().siblingAtColumn(0));
@@ -210,7 +210,7 @@ void DirectoryView::changeDirDown()
     if (fileInfo.exists() && fileInfo.isDir()) {
         directoryContents.setRootIndex(model.index(path));
     } else {
-        qDebug() << "Selected object is not a directory" << endl;
+        qDebug() << "[INFO] Selected object is not a directory" << endl;
     }
 }
 
