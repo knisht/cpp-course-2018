@@ -27,14 +27,14 @@ add_executable(filechecker
                ${INCLUDE_DIR}/gui/directoryview.h
                )
 
-#add_executable(core_test
-#               ${TEST_DIR}/checker_test.cpp
-#               ${TEST_DIR}/gtest/gtest.h
-#               ${TEST_DIR}/gtest/gtest_main.cc
-#               ${TEST_DIR}/gtest/gtest-all.cc
-#               ${SOURCE_DIR}/checker.cpp
-#               ${INCLUDE_DIR}/checker.hpp
-#               )
+add_executable(core_test
+               ${TEST_DIR}/checker_test.cpp
+               ${TEST_DIR}/gtest/gtest.h
+               ${TEST_DIR}/gtest/gtest_main.cc
+               ${TEST_DIR}/gtest/gtest-all.cc
+               ${SOURCE_DIR}/core/checker.cpp
+               ${INCLUDE_DIR}/core/checker.hpp
+               )
 
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
@@ -48,5 +48,5 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Weverything -Wno-c++98-compat -std=c++17 -fsanitize=address")
 endif()
 
-#target_link_libraries(core_test stdc++fs -lpthread)
+target_link_libraries(core_test stdc++fs -lpthread)
 target_link_libraries(filechecker stdc++fs Qt5::Widgets -lpthread -lstdc++fs)
