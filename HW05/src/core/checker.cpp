@@ -62,8 +62,8 @@ size_t get_hash(std::string const &filepath, size_t filesize)
 {
     size_t result = 0;
     std::ifstream ifs = std::ifstream(filepath, std::ios::binary);
-    std::string buf;
     if (filesize >= CHAR_BUF_SIZE) {
+        std::string buf;
         buf.resize(CHAR_BUF_SIZE);
         while (filesize >= CHAR_BUF_SIZE) {
             filesize -= CHAR_BUF_SIZE;
@@ -72,6 +72,7 @@ size_t get_hash(std::string const &filepath, size_t filesize)
         }
     }
     if (filesize > 0) {
+        std::string buf;
         buf.resize(filesize);
         ifs.read(&buf[0], static_cast<std::streamsize>(filesize));
         result += std::hash<std::string>{}(buf);

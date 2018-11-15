@@ -96,11 +96,11 @@ TEST(correctness, mixup)
     std::string directory = "./tmp/";
     fs::create_directory(directory);
     std::vector<std::pair<std::string, std::string>> files_content{
-        {"a", "abcde"}, {"b", "cdef"}, {"c", "abcde"},
-        {"d", "eghi"},  {"e", "cdef"}, {"h", "abcde"}};
+        {"a", "abcde"}, {"b", "cdefa"}, {"c", "abcde"},
+        {"d", "eghih"}, {"e", "cdefa"}, {"h", "abcde"}};
+
     for (auto &&it : files_content) {
-        std::ofstream(directory + it.first)
-            .write(it.second.c_str(), sizeof(it.second.c_str()));
+        std::ofstream(directory + it.first).write(it.second.c_str(), 5);
     }
     groups actual = core::group_all(directory);
     std::for_each(actual.begin(), actual.end(),
