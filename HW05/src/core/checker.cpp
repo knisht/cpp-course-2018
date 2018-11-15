@@ -25,20 +25,20 @@ std::vector<std::pair<std::string, size_t>>
 get_filenames(std::string const &path)
 {
     std::vector<std::pair<std::string, size_t>> filenames;
-    std::queue<std::string> queue;
+    std::vector<std::string> queue;
     std::unordered_set<std::string> processed_filenames;
-    queue.push(path);
-    while (!queue.empty()) {
+    queue.push_back(path);
+    size_t queue_front = 0;
+    while (queue_front != queue.size()) {
         try {
-            fs::directory_iterator entries(queue.front());
-            for (auto &&p : entries) {
+            for (auto &&p : fs::directory_iterator(queue[queue_front])) {
                 try {
-                    fs::path canonical_path = fs::canonical(p);
+                    std::string canonical_path = fs::canonical(p);
                     if (processed_filenames.count(canonical_path) != 0) {
                         continue;
                     }
                     if (fs::is_directory(canonical_path)) {
-                        queue.push(canonical_path);
+                        queue.push_back(canonical_path);
                     } else {
                         filenames.push_back(
                             {canonical_path, fs::file_size(canonical_path)});
@@ -51,27 +51,30 @@ get_filenames(std::string const &path)
         } catch (fs::filesystem_error &e) {
             std::cerr << "[ERROR] " << e.what() << std::endl;
         }
-        queue.pop();
+        ++queue_front;
     }
     return filenames;
 }
 
 size_t hashcheck = 0;
 
-size_t get_hash(std::string const &filepath)
+size_t get_hash(std::string const &filepath, size_t filesize)
 {
-    std::ifstream ifs(filepath, std::ios::binary | std::ios::ate);
-    size_t available = static_cast<size_t>(ifs.tellg());
-    char buf[CHAR_BUF_SIZE + 1];
-    memset(buf, 0, CHAR_BUF_SIZE);
-    buf[CHAR_BUF_SIZE] = '\0';
     size_t result = 0;
-    ifs = std::ifstream(filepath, std::ios::binary);
-    while (available > 0) {
-        size_t left = std::min(CHAR_BUF_SIZE, available);
-        available -= left;
-        ifs.read(buf, left);
-        result += std::hash<std::string>{}(std::string(buf, left));
+    std::ifstream ifs = std::ifstream(filepath, std::ios::binary);
+    std::string buf;
+    if (filesize >= CHAR_BUF_SIZE) {
+        buf.resize(CHAR_BUF_SIZE);
+        while (filesize >= CHAR_BUF_SIZE) {
+            filesize -= CHAR_BUF_SIZE;
+            ifs.read(&buf[0], static_cast<std::streamsize>(CHAR_BUF_SIZE));
+            result += std::hash<std::string>{}(buf);
+        }
+    }
+    if (filesize > 0) {
+        buf.resize(filesize);
+        ifs.read(&buf[0], static_cast<std::streamsize>(filesize));
+        result += std::hash<std::string>{}(buf);
     }
     return result;
 }
@@ -96,7 +99,6 @@ bool equal(file_brief const &a, file_brief const &b)
     if (a.size != b.size) {
         return false;
     }
-    ++hashcheck;
     std::ifstream first_ifs(a.filename, std::ios::binary),
         second_ifs(b.filename, std::ios::binary);
     char first_buf[CHAR_BUF_SIZE], second_buf[CHAR_BUF_SIZE];
@@ -107,6 +109,7 @@ bool equal(file_brief const &a, file_brief const &b)
         first_ifs.read(first_buf, CHAR_BUF_SIZE);
         second_ifs.read(second_buf, CHAR_BUF_SIZE);
         if (strncmp(first_buf, second_buf, left) != 0) {
+            ++hashcheck;
             return false;
         }
     }
@@ -116,6 +119,7 @@ bool equal(file_brief const &a, file_brief const &b)
 std::vector<std::vector<std::string>> static group_everything(
     std::string const &path, std::string const &root = "")
 {
+    hashcheck = 0;
     std::chrono::high_resolution_clock::time_point t1 =
         std::chrono::high_resolution_clock::now();
     // Maybe std::vector will be better cause of small number of files
@@ -137,9 +141,9 @@ std::vector<std::vector<std::string>> static group_everything(
 
     for (auto &&file_and_size : filenames) {
         if (occurrences[file_and_size.second] >= 2) {
-            filtered_filenames.push_back({file_and_size.first,
-                                          file_and_size.second,
-                                          get_hash(file_and_size.first)});
+            filtered_filenames.push_back(
+                {file_and_size.first, file_and_size.second,
+                 get_hash(file_and_size.first, file_and_size.second)});
         }
     }
     // chrono stuff
@@ -147,8 +151,8 @@ std::vector<std::vector<std::string>> static group_everything(
         std::chrono::high_resolution_clock::now();
     duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(tm - t1).count();
-    std::cout << "[INFO] Hashing " << directory << " finished in " << duration
-              << "ms" << std::endl;
+    std::cout << "[INFO] Hashing of " << directory << " finished in "
+              << duration << "ms" << std::endl;
     // chrono stuff
 
     std::vector<std::vector<std::string>> groups;
@@ -182,7 +186,8 @@ std::vector<std::vector<std::string>> static group_everything(
     } else {
         auto mainfile =
             std::find(filtered_filenames.begin(), filtered_filenames.end(),
-                      file_brief{path, fs::file_size(path), get_hash(path)});
+                      file_brief{path, fs::file_size(path),
+                                 get_hash(path, fs::file_size(path))});
         groups.push_back({});
         for (auto &&it : filtered_filenames) {
             if (equal(it, *mainfile)) {
@@ -195,8 +200,9 @@ std::vector<std::vector<std::string>> static group_everything(
 
     duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    std::cout << "[INFO] Scanning " << directory << " finished in " << duration
-              << "ms with " << hashcheck << " collisions" << std::endl;
+    std::cout << "[INFO] Full scanning of " << directory << " finished in "
+              << duration << "ms with " << hashcheck << " hash collisions"
+              << std::endl;
     return groups;
 }
 } // namespace

@@ -160,21 +160,21 @@ TEST(correctness, mixup_big)
     ASSERT_EQ(expected, actual);
 }
 
-TEST(time_measure, gradle)
-{
-    std::string directory = "/home/knisht/ITMO";
-    groups result = core::group_all(directory);
+// TEST(time_measure, gradle)
+//{
+//    std::string directory = "/home/knisht/repos";
+//    groups result = core::group_all(directory);
 
-    std::ofstream ofs("aasd");
-    for (auto &&it : result) {
-        for (auto &&jt : it) {
-            //            if (fs::file_size(jt) == 0 || jt.find("gradle") ==
-            //            jt.npos) {
-            //                continue;
-            //            }
-            ofs << jt << std::endl;
-        }
-        ofs << std::endl;
-    }
-    ASSERT_EQ(1, 1);
-}
+//    std::ofstream ofs("aasd");
+//    for (auto &&it : result) {
+//        for (auto &&jt : it) {
+//            //            if (fs::file_size(jt) == 0 || jt.find("gradle") ==
+//            //            jt.npos) {
+//            //                continue;
+//            //            }
+//            ofs << jt << std::endl;
+//        }
+//        ofs << std::endl;
+//    }
+//    ASSERT_EQ(1, 1);
+//}
