@@ -56,8 +56,6 @@ get_filenames(std::string const &path)
     return filenames;
 }
 
-size_t hashcheck = 0;
-
 size_t get_hash(std::string const &filepath, size_t filesize)
 {
     size_t result = 0;
@@ -110,7 +108,6 @@ bool equal(file_brief const &a, file_brief const &b)
         first_ifs.read(first_buf, CHAR_BUF_SIZE);
         second_ifs.read(second_buf, CHAR_BUF_SIZE);
         if (strncmp(first_buf, second_buf, left) != 0) {
-            ++hashcheck;
             return false;
         }
     }
@@ -120,10 +117,8 @@ bool equal(file_brief const &a, file_brief const &b)
 std::vector<std::vector<std::string>> static group_everything(
     std::string const &path, std::string const &root = "")
 {
-    hashcheck = 0;
     std::chrono::high_resolution_clock::time_point t1 =
         std::chrono::high_resolution_clock::now();
-    // Maybe std::vector will be better cause of small number of files
     std::string directory = root == "" ? path : root;
     std::vector<std::pair<std::string, size_t>> filenames =
         get_filenames(directory);
@@ -133,28 +128,16 @@ std::vector<std::vector<std::string>> static group_everything(
     };
     std::list<file_brief> filtered_filenames;
 
-    std::chrono::high_resolution_clock::time_point tk =
-        std::chrono::high_resolution_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(tk - t1).count();
-    std::cout << "[INFO] Basic parsing of " << directory << " finished in "
-              << duration << "ms" << std::endl;
-
     for (auto &&file_and_size : filenames) {
         if (occurrences[file_and_size.second] >= 2) {
+            size_t hash = 1;
+            if (occurrences[file_and_size.second] >= 3) {
+                hash = get_hash(file_and_size.first, file_and_size.second);
+            }
             filtered_filenames.push_back(
-                {file_and_size.first, file_and_size.second,
-                 get_hash(file_and_size.first, file_and_size.second)});
+                {file_and_size.first, file_and_size.second, hash});
         }
     }
-    // chrono stuff
-    std::chrono::high_resolution_clock::time_point tm =
-        std::chrono::high_resolution_clock::now();
-    duration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(tm - t1).count();
-    std::cout << "[INFO] Hashing of " << directory << " finished in "
-              << duration << "ms" << std::endl;
-    // chrono stuff
 
     std::vector<std::vector<std::string>> groups;
     filtered_filenames.sort([](file_brief const &a, file_brief const &b) {
@@ -199,11 +182,10 @@ std::vector<std::vector<std::string>> static group_everything(
     std::chrono::high_resolution_clock::time_point t2 =
         std::chrono::high_resolution_clock::now();
 
-    duration =
+    auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
     std::cout << "[INFO] Full scanning of " << directory << " finished in "
-              << duration << "ms with " << hashcheck << " hash collisions"
-              << std::endl;
+              << duration << "ms" << std::endl;
     return groups;
 }
 } // namespace

@@ -28,6 +28,7 @@ public:
     }
 } static colorGenerator;
 } // namespace
+
 DirectoryTreeStyleDelegate::DirectoryTreeStyleDelegate(
     QFileSystemModel const *model)
 {
@@ -148,7 +149,8 @@ void DirectoryView::removeFile()
     if (fileInfo.exists() && fileInfo.isFile()) {
         model.remove(emphasizedIndex.value());
     } else {
-        qDebug() << "[ERROR] Failed to delete file" << endl;
+        qDebug() << "[ERROR] Failed to delete file "
+                 << fileInfo.absoluteFilePath() << endl;
     }
     repaint();
 }
@@ -184,7 +186,8 @@ void DirectoryView::findDuplicatesForParticular()
                 model.index(QDir::cleanPath(QString::fromStdString(it))));
         }
     } else {
-        qDebug() << "[ERROR] Failed to access the file" << endl;
+        qDebug() << "[ERROR] Failed to access the file"
+                 << fileInfo.absoluteFilePath() << endl;
     }
     repaint();
 }
