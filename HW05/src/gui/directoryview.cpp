@@ -50,7 +50,7 @@ void DirectoryTreeStyleDelegate::paint(QPainter *painter,
         color.setRgb(102, 204, 255, 50);
         painter->fillRect(option.rect, color);
     }
-    QModelIndex const &primaryFilename = index.siblingAtColumn(0);
+    QModelIndex const &primaryFilename = index.sibling(index.row(), 0);
     if (coloredIndices.contains(model->filePath(primaryFilename))) {
         painter->fillRect(
             option.rect,
@@ -144,8 +144,8 @@ void DirectoryView::removeFile()
         qDebug() << "[INFO] Some file must be selected" << endl;
         return;
     }
-    QFileInfo fileInfo(
-        model.filePath(emphasizedIndex.value().siblingAtColumn(0)));
+    QFileInfo fileInfo(model.filePath(
+        emphasizedIndex.value().sibling(emphasizedIndex.value().row(), 0)));
     if (fileInfo.exists() && fileInfo.isFile()) {
         model.remove(emphasizedIndex.value());
     } else {
@@ -171,8 +171,8 @@ void DirectoryView::findDuplicatesForParticular()
         qDebug() << "[INFO] Some file must be selected" << endl;
         return;
     }
-    QFileInfo fileInfo(
-        model.filePath(emphasizedIndex.value().siblingAtColumn(0)));
+    QFileInfo fileInfo(model.filePath(
+        emphasizedIndex.value().sibling(emphasizedIndex.value().row(), 0)));
     if (fileInfo.exists() && fileInfo.isFile()) {
 
         std::vector<std::string> data = core::group_for(
@@ -208,7 +208,8 @@ void DirectoryView::changeDirDown()
         qDebug() << "[INFO] Some directory must be selected" << endl;
         return;
     }
-    QString path = model.filePath(emphasizedIndex.value().siblingAtColumn(0));
+    QString path = model.filePath(
+        emphasizedIndex.value().sibling(emphasizedIndex.value().row(), 0));
     QFileInfo fileInfo(path);
     if (fileInfo.exists() && fileInfo.isDir()) {
         directoryContents.setRootIndex(model.index(path));
