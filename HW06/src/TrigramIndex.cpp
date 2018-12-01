@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <iostream>
 #include <vector>
 
 const qint32 BUF_SIZE = 1 << 20;
@@ -200,6 +201,7 @@ TrigramIndex::findSubstring(QString const &target) const
     for (size_t fileId : trigramsInFiles.at(*targetTrigrams.begin())) {
         neccesaryFiles.push_back(fileId);
     }
+    std::cout << "kekos" << std::endl;
     for (Trigram const &trigram : targetTrigrams) {
         if (trigramsInFiles.count(trigram) > 0) {
             mergeVectorToList(neccesaryFiles, trigramsInFiles.at(trigram));

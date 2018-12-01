@@ -70,3 +70,34 @@ TEST(correctness, absence)
     ASSERT_EQ(expected, occurrences);
     fs::remove_all(directory);
 }
+
+TEST(correctness, one_letter)
+{
+    std::string directory = "./tmp";
+    fs::create_directories(directory);
+    std::ofstream(directory + "/a") << "abacaba" << std::flush;
+    std::ofstream(directory + "/b") << "dabacaba" << std::flush;
+    TrigramIndex index{"./tmp"};
+
+    std::vector<SubstringOccurrence> occurrences = index.findSubstring("a");
+    std::vector<SubstringOccurrence> expected{{"./tmp/a", {0, 2, 4, 6}},
+                                              {"./tmp/b", {1, 3, 5, 7}}};
+    ASSERT_EQ(expected, occurrences);
+    fs::remove_all(directory);
+}
+
+TEST(correctness, time)
+{
+    std::string directory = "/home/knisht/repos";
+    //    fs::create_directories(directory);
+    //    std::ofstream(directory + "/a") << "abacaba" << std::flush;
+    //    std::ofstream(directory + "/b") << "dabacaba" << std::flush;
+    TrigramIndex index{directory.c_str()};
+    std::cout << "build index!" << std::endl;
+    std::vector<SubstringOccurrence> occurrences =
+        index.findSubstring("source");
+    //    std::vector<SubstringOccurrence> expected{{"./tmp/a", {0, 2, 4, 6}},
+    //                                              {"./tmp/b", {1, 3, 5, 7}}};
+    //    ASSERT_EQ(expected, occurrences);
+    //    fs::remove_all(directory);
+}
