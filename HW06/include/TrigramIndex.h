@@ -14,12 +14,28 @@ public:
     struct SubstringOccurrence {
         QString filename;
         std::vector<size_t> occurrences;
+
+        friend bool operator==(SubstringOccurrence const &a,
+                               SubstringOccurrence const &b)
+        {
+            return a.filename == b.filename && a.occurrences == b.occurrences;
+        }
     };
+
+    TrigramIndex operator=(TrigramIndex const &) = delete;
 
     std::vector<SubstringOccurrence> findSubstring(QString const &target) const;
 
     struct Trigram {
-        char storage[3];
+
+        Trigram(char *c_str) { memcpy(storage, c_str, 3); }
+
+        Trigram(std::string str)
+        {
+            assert(str.size() >= 3);
+            memcpy(storage, str.data(), 3);
+        }
+
         friend bool operator<(Trigram const &a, Trigram const &b)
         {
             return a.storage[0] == b.storage[0]
@@ -28,10 +44,14 @@ public:
                              : a.storage[1] < b.storage[1]
                        : a.storage[0] < b.storage[0];
         }
+
+        const char *data() const { return storage; }
+
+    private:
+        char storage[3];
     };
 
     struct Document {
-        // TODO: make set with comparator
         QString filename;
         std::map<Trigram, std::vector<size_t>> trigramOccurrences;
         Document(QString filename) : filename(filename), trigramOccurrences{} {}
@@ -41,6 +61,8 @@ private:
     std::map<Trigram, std::vector<size_t>> trigramsInFiles;
     // TODO: put documents on disk
     std::vector<Document> documents;
-};
 
+    std::vector<TrigramIndex::SubstringOccurrence>
+    smallStringProcess(std::string target) const;
+};
 #endif // TRIGRAM_INDEX_H

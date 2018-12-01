@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-project("Indeksearch")
+project("Librarian")
 
 include_directories(${PROJECT_SOURCE_DIR})
 
@@ -15,9 +15,12 @@ set (CMAKE_INCLUDE_CURRENT_DIR ON)
 
 find_package(Qt5Widgets)
 
-add_executable(indexer
-    ${SOURCE_DIR}/main.cpp
+add_executable(index_test
+    ${TEST_DIR}/gtest/gtest.h
+    ${TEST_DIR}/gtest/gtest_main.cc
+    ${TEST_DIR}/gtest/gtest-all.cc
+    ${TEST_DIR}/index_test.cpp
     ${INCLUDE_DIR}/TrigramIndex.h
     ${SOURCE_DIR}/TrigramIndex.cpp)
 
-target_link_libraries(indexer Qt5::Widgets)
+target_link_libraries(index_test Qt5::Widgets -lpthread stdc++fs)
