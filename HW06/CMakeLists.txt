@@ -23,6 +23,15 @@ add_executable(index_test
     ${INCLUDE_DIR}/TrigramIndex.h
     ${SOURCE_DIR}/TrigramIndex.cpp)
 
+add_executable(librarian
+    ${SOURCE_DIR}/main.cpp
+    ${SOURCE_DIR}/mainwindow.cpp
+    ${SOURCE_DIR}/mainwindow.h
+    ${SOURCE_DIR}/mainwindow.ui
+    ${INCLUDE_DIR}/TrigramIndex.h
+    ${SOURCE_DIR}/TrigramIndex.cpp
+    )
+
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++17 -fopenmp")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3")
@@ -36,3 +45,4 @@ endif()
 
 
 target_link_libraries(index_test Qt5::Widgets -lpthread stdc++fs)
+target_link_libraries(librarian Qt5::Widgets -lpthread)

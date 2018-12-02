@@ -100,6 +100,18 @@ void unwrapTrigrams(TrigramIndex::Document &document)
     int passed = 0;
     while (fileSize > 0) {
         fileInstance.read(bytes.data(), block_size);
+
+        bool has_zero = false;
+#pragma omp parallel for
+        for (int i = 0; i < block_size; ++i) {
+            if (bytes.data()[i] == 0) {
+                has_zero = true;
+            }
+        }
+        if (has_zero) {
+            document.trigramOccurrences.clear();
+            return;
+        }
         if (passed > 0) {
             last[2] = bytes[0];
             document.trigramOccurrences[{last}].push_back(
@@ -110,9 +122,6 @@ void unwrapTrigrams(TrigramIndex::Document &document)
         }
 
         for (size_t i = 0; i < qMin(fileSize, block_size) - 2; ++i) {
-            if (bytes.data()[i] == 0) {
-                return;
-            }
             size_t trigram_code =
                 static_cast<size_t>(bytes.data()[i] << 16) +
                 static_cast<size_t>(bytes.data()[i + 1] << 8) +
