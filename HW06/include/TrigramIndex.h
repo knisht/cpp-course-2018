@@ -28,6 +28,8 @@ public:
 
     std::vector<SubstringOccurrence> findSubstring(QString const &target) const;
 
+    void printDocuments();
+
     struct Trigram {
 
         Trigram(char *c_str) : trigram_code(encode(c_str)) {}

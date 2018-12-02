@@ -23,6 +23,13 @@ std::string TrigramIndex::Trigram::toString() const
             static_cast<char>(trigram_code)};
 }
 
+void TrigramIndex::printDocuments()
+{
+    for (auto &it : documents) {
+        std::cout << it.filename.toStdString() << std::endl;
+    }
+}
+
 bool TrigramIndex::Trigram::substr(std::string const &target) const
 {
     if (target.size() >= 3) {
@@ -49,27 +56,15 @@ void unwrapTrigrams(TrigramIndex::Document &document);
 
 TrigramIndex::TrigramIndex(QString const &root)
 {
-    auto start = std::chrono::steady_clock::now();
     documents = getFileEntries(root);
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - start);
-    std::cout << "Files collecting finished in " << duration.count() << "ms"
-              << std::endl;
+#pragma omp parallel for
     for (size_t i = 0; i < documents.size(); ++i) {
-        start = std::chrono::steady_clock::now();
         unwrapTrigrams(documents[i]);
-        duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - start);
-        std::cout << "Unwrapping of " << documents[i].filename.toStdString()
-                  << " finished in " << duration.count() << "ms" << std::endl;
+    }
+    for (size_t i = 0; i < documents.size(); ++i) {
         for (auto &pair : documents[i].trigramOccurrences) {
             trigramsInFiles[pair.first].push_back(i);
         }
-
-        duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - start);
-        std::cout << "Collecting finished in " << duration.count() << "ms"
-                  << std::endl;
     }
 }
 
@@ -103,9 +98,6 @@ void unwrapTrigrams(TrigramIndex::Document &document)
     QByteArray bytes(block_size, '\0');
     char last[3];
     int passed = 0;
-
-    std::vector<std::pair<size_t, size_t>> trigramCodes(
-        qMin(fileSize, block_size) - 2);
     while (fileSize > 0) {
         fileInstance.read(bytes.data(), block_size);
         if (passed > 0) {
@@ -117,29 +109,18 @@ void unwrapTrigrams(TrigramIndex::Document &document)
                 static_cast<size_t>(passed * block_size - 1));
         }
 
-        auto start = std::chrono::steady_clock::now();
-        //#pragma omp parallel for
-        for (size_t i = 0; i < trigramCodes.size(); ++i) {
-            trigramCodes[i] = {
+        for (size_t i = 0; i < qMin(fileSize, block_size) - 2; ++i) {
+            if (bytes.data()[i] == 0) {
+                return;
+            }
+            size_t trigram_code =
                 static_cast<size_t>(bytes.data()[i] << 16) +
-                    static_cast<size_t>(bytes.data()[i + 1] << 8) +
-                    static_cast<size_t>(bytes.data()[i + 2]),
-                passed * block_size + i};
+                static_cast<size_t>(bytes.data()[i + 1] << 8) +
+                static_cast<size_t>(bytes.data()[i + 2]);
+            document.trigramOccurrences[trigram_code].push_back(
+                passed * block_size + i);
         }
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - start);
-        std::cout << "Parallelling finished in " << duration.count() << "ms"
-                  << std::endl;
-        for (size_t i = 0; i < trigramCodes.size(); ++i) {
-            // TODO: smth with this
-            document.trigramOccurrences[trigramCodes[i].first].push_back(
-                trigramCodes[i].second);
-        }
-        duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - start);
-        std::cout << "Files reading finished in " << duration.count() << "ms"
-                  << std::endl;
-        if (document.trigramOccurrences.size() > 300000) {
+        if (document.trigramOccurrences.size() > 200000) {
             document.trigramOccurrences.clear();
             return;
         }
