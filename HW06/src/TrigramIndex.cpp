@@ -3,8 +3,43 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <algorithm>
+#include <functional>
 #include <iostream>
-#include <vector>
+#include <unordered_set>
+#include <utility>
+
+size_t TrigramIndex::Trigram::encode(const char *target) const
+{
+    return static_cast<size_t>(target[0] << 16) +
+           (static_cast<size_t>(target[1]) << 8) +
+           (static_cast<size_t>(target[2]));
+}
+
+std::string TrigramIndex::Trigram::toString() const
+{
+    return {static_cast<char>(trigram_code >> 16),
+            static_cast<char>(trigram_code >> 8),
+            static_cast<char>(trigram_code)};
+}
+
+bool TrigramIndex::Trigram::substr(std::string const &target) const
+{
+    if (target.size() >= 3) {
+        return false;
+    }
+    if (target.size() == 2) {
+        size_t target_code = static_cast<size_t>((target[0] << 8) + target[1]);
+        if (target_code == (trigram_code & ((1 << 16) - 1))) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return static_cast<size_t>(target[0]) ==
+               (trigram_code & ((1 << 8) - 1));
+    }
+}
 
 const qint32 BUF_SIZE = 1 << 20;
 
@@ -14,15 +49,27 @@ void unwrapTrigrams(TrigramIndex::Document &document);
 
 TrigramIndex::TrigramIndex(QString const &root)
 {
+    auto start = std::chrono::steady_clock::now();
     documents = getFileEntries(root);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start);
+    std::cout << "Files collecting finished in " << duration.count() << "ms"
+              << std::endl;
     for (size_t i = 0; i < documents.size(); ++i) {
+        start = std::chrono::steady_clock::now();
         unwrapTrigrams(documents[i]);
-        for (auto &trigram : documents[i].trigramOccurrences) {
-            if (trigramsInFiles.count(trigram.first) == 0) {
-                trigramsInFiles[trigram.first] = std::vector<size_t>{};
-            }
-            trigramsInFiles[trigram.first].push_back(i);
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start);
+        std::cout << "Unwrapping of " << documents[i].filename.toStdString()
+                  << " finished in " << duration.count() << "ms" << std::endl;
+        for (auto &pair : documents[i].trigramOccurrences) {
+            trigramsInFiles[pair.first].push_back(i);
         }
+
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start);
+        std::cout << "Collecting finished in " << duration.count() << "ms"
+                  << std::endl;
     }
 }
 
@@ -55,41 +102,44 @@ void unwrapTrigrams(TrigramIndex::Document &document)
     qint32 block_size = qMin(fileSize, BUF_SIZE);
     QByteArray bytes(block_size, '\0');
     char last[3];
-
     int passed = 0;
-    size_t unique_trigrams = 0;
+
+    std::vector<std::pair<size_t, size_t>> trigramCodes(
+        qMin(fileSize, block_size) - 2);
     while (fileSize > 0) {
         fileInstance.read(bytes.data(), block_size);
         if (passed > 0) {
             last[2] = bytes[0];
-            TrigramIndex::Trigram trigram{last};
-            if (document.trigramOccurrences.count(trigram) == 0) {
-                ++unique_trigrams;
-                document.trigramOccurrences[trigram] = std::vector<size_t>{};
-            }
-            document.trigramOccurrences[trigram].push_back(
+            document.trigramOccurrences[{last}].push_back(
                 static_cast<size_t>(passed * block_size - 2));
             char trigramBuf[3] = {last[1], last[2], bytes[1]};
-            trigram = TrigramIndex::Trigram(trigramBuf);
-            if (document.trigramOccurrences.count(trigram) == 0) {
-                ++unique_trigrams;
-                document.trigramOccurrences[trigram] = std::vector<size_t>{};
-            }
-            document.trigramOccurrences[trigram].push_back(
+            document.trigramOccurrences[{trigramBuf}].push_back(
                 static_cast<size_t>(passed * block_size - 1));
         }
-        for (int i = 0; i < qMin(fileSize, block_size) - 2; ++i) {
-            // FIXME: Copypast
-            // FIXME: Slow
-            TrigramIndex::Trigram trigram{bytes.data() + i};
-            if (document.trigramOccurrences.count(trigram) == 0) {
-                ++unique_trigrams;
-                document.trigramOccurrences[trigram] = std::vector<size_t>{};
-            }
-            document.trigramOccurrences[trigram].push_back(
-                static_cast<size_t>(passed * block_size + i));
+
+        auto start = std::chrono::steady_clock::now();
+        //#pragma omp parallel for
+        for (size_t i = 0; i < trigramCodes.size(); ++i) {
+            trigramCodes[i] = {
+                static_cast<size_t>(bytes.data()[i] << 16) +
+                    static_cast<size_t>(bytes.data()[i + 1] << 8) +
+                    static_cast<size_t>(bytes.data()[i + 2]),
+                passed * block_size + i};
         }
-        if (unique_trigrams > 300000) {
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start);
+        std::cout << "Parallelling finished in " << duration.count() << "ms"
+                  << std::endl;
+        for (size_t i = 0; i < trigramCodes.size(); ++i) {
+            // TODO: smth with this
+            document.trigramOccurrences[trigramCodes[i].first].push_back(
+                trigramCodes[i].second);
+        }
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start);
+        std::cout << "Files reading finished in " << duration.count() << "ms"
+                  << std::endl;
+        if (document.trigramOccurrences.size() > 300000) {
             document.trigramOccurrences.clear();
             return;
         }
@@ -107,12 +157,11 @@ void mergeVectorToList(std::list<size_t> &destination,
 {
     auto it = destination.begin();
     for (size_t currentIndex : source) {
-        if (it == destination.end()) {
-            break;
+        while (it != destination.end() && *it < currentIndex) {
+            destination.erase(it++);
         }
-        while (*it < currentIndex) {
-            destination.erase(it);
-            ++it;
+        if (it == destination.end()) {
+            return;
         }
         if (*it == currentIndex) {
             ++it;
@@ -132,9 +181,9 @@ std::vector<size_t> findExactOccurrences(TrigramIndex::Document const &doc,
     if (doc.trigramOccurrences.count(start) != 0) {
         for (size_t occurrence : doc.trigramOccurrences.at(start)) {
             if (occurrence < currentPosition) {
-                size_t delta = target.size() - currentPosition + occurrence;
+                size_t delta = currentPosition - occurrence;
                 for (size_t i = 0; i < delta; ++i) {
-                    buf[i] = buf[i + delta];
+                    buf[i] = buf[i + target.size() - delta];
                 }
                 fileInstance.read(&buf[0] + delta,
                                   static_cast<int>(target.size() - delta));
@@ -153,34 +202,35 @@ std::vector<size_t> findExactOccurrences(TrigramIndex::Document const &doc,
 }
 
 std::vector<TrigramIndex::SubstringOccurrence>
-TrigramIndex::smallStringProcess(std::string target) const
+TrigramIndex::smallStringProcess(std::string const &target) const
 {
-    std::set<size_t> fileIds;
+    std::unordered_set<size_t> fileIds;
     for (auto &pair : trigramsInFiles) {
-        for (size_t i = 0; i < 4 - target.size(); ++i) {
-            if (strncmp(target.data(), pair.first.data() + i, target.size())) {
-                fileIds.insert(pair.second.begin(), pair.second.end());
-                break;
-            }
+        if (pair.first.substr(target)) {
+            fileIds.insert(pair.second.begin(), pair.second.end());
         }
     }
     std::vector<TrigramIndex::SubstringOccurrence> result;
     for (size_t fileId : fileIds) {
         std::vector<size_t> occurrences;
         for (auto &pair : documents[fileId].trigramOccurrences) {
-            for (size_t i = 0; i < 4 - target.size(); ++i) {
-                // FIXME: Copypast
-                if (strncmp(target.data(), pair.first.data() + i,
-                            target.size())) {
-                    occurrences.insert(occurrences.end(), pair.second.begin(),
-                                       pair.second.end());
-                    break;
+            if (pair.first.substr(target)) {
+                for (size_t j : pair.second) {
+                    occurrences.push_back(j);
                 }
             }
         }
+        // TODO: end of file trigrams
+        // TODO: move occurrs
         result.push_back({documents[fileId].filename, occurrences});
     }
-    return {};
+    for (auto &it : result) {
+        std::sort(it.occurrences.begin(), it.occurrences.end());
+        it.occurrences.erase(
+            std::unique(it.occurrences.begin(), it.occurrences.end()),
+            it.occurrences.end());
+    }
+    return result;
 }
 
 std::vector<TrigramIndex::SubstringOccurrence>
@@ -190,7 +240,7 @@ TrigramIndex::findSubstring(QString const &target) const
     if (stdTarget.size() <= 2) {
         return smallStringProcess(stdTarget);
     }
-    std::set<TrigramIndex::Trigram> targetTrigrams;
+    std::unordered_set<TrigramIndex::Trigram, TrigramHash> targetTrigrams;
     for (size_t i = 0; i < stdTarget.size() - 2; ++i) {
         targetTrigrams.insert({&stdTarget.c_str()[i]});
     }
@@ -201,7 +251,6 @@ TrigramIndex::findSubstring(QString const &target) const
     for (size_t fileId : trigramsInFiles.at(*targetTrigrams.begin())) {
         neccesaryFiles.push_back(fileId);
     }
-    std::cout << "kekos" << std::endl;
     for (Trigram const &trigram : targetTrigrams) {
         if (trigramsInFiles.count(trigram) > 0) {
             mergeVectorToList(neccesaryFiles, trigramsInFiles.at(trigram));

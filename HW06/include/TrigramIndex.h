@@ -4,6 +4,7 @@
 #include <QString>
 #include <map>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 class TrigramIndex
@@ -11,6 +12,7 @@ class TrigramIndex
 public:
     TrigramIndex(QString const &root);
 
+public:
     struct SubstringOccurrence {
         QString filename;
         std::vector<size_t> occurrences;
@@ -28,41 +30,54 @@ public:
 
     struct Trigram {
 
-        Trigram(char *c_str) { memcpy(storage, c_str, 3); }
+        Trigram(char *c_str) : trigram_code(encode(c_str)) {}
 
-        Trigram(std::string str)
-        {
-            assert(str.size() >= 3);
-            memcpy(storage, str.data(), 3);
-        }
+        Trigram(std::string str) : trigram_code(encode(str.data())) {}
+
+        Trigram(size_t code) : trigram_code(code) {}
 
         friend bool operator<(Trigram const &a, Trigram const &b)
         {
-            return a.storage[0] == b.storage[0]
-                       ? a.storage[1] == b.storage[1]
-                             ? a.storage[2] < b.storage[2]
-                             : a.storage[1] < b.storage[1]
-                       : a.storage[0] < b.storage[0];
+            return a.trigram_code < b.trigram_code;
         }
 
-        const char *data() const { return storage; }
+        friend bool operator==(Trigram const &a, Trigram const &b)
+        {
+            return a.trigram_code == b.trigram_code;
+        }
+
+        size_t code() const { return trigram_code; }
+        bool substr(std::string const &) const;
+        std::string toString() const;
 
     private:
-        char storage[3];
+        size_t encode(const char *) const;
+        size_t trigram_code;
     };
 
+private:
+    struct TrigramHash {
+        size_t operator()(Trigram const &trigram) const
+        {
+            return trigram.code();
+        }
+    };
+
+public:
     struct Document {
         QString filename;
-        std::map<Trigram, std::vector<size_t>> trigramOccurrences;
+        std::unordered_map<Trigram, std::vector<size_t>, TrigramHash>
+            trigramOccurrences;
         Document(QString filename) : filename(filename), trigramOccurrences{} {}
     };
 
 private:
-    std::map<Trigram, std::vector<size_t>> trigramsInFiles;
+    std::unordered_map<Trigram, std::vector<size_t>, TrigramHash>
+        trigramsInFiles;
     // TODO: put documents on disk
     std::vector<Document> documents;
 
     std::vector<TrigramIndex::SubstringOccurrence>
-    smallStringProcess(std::string target) const;
+    smallStringProcess(std::string const &target) const;
 };
 #endif // TRIGRAM_INDEX_H
