@@ -127,15 +127,15 @@ std::vector<std::vector<std::string>> static group_everything(
         ++occurrences[file_and_size.second];
     };
     std::list<file_brief> filtered_filenames;
-
-    for (auto &&file_and_size : filenames) {
-        if (occurrences[file_and_size.second] >= 2) {
+    //#pragma omp parallel for
+    for (size_t i = 0; i < filenames.size(); ++i) {
+        if (occurrences[filenames[i].second] >= 2) {
             size_t hash = 1;
-            if (occurrences[file_and_size.second] >= 3) {
-                hash = get_hash(file_and_size.first, file_and_size.second);
+            if (occurrences[filenames[i].second] >= 3) {
+                hash = get_hash(filenames[i].first, filenames[i].second);
             }
             filtered_filenames.push_back(
-                {file_and_size.first, file_and_size.second, hash});
+                {filenames[i].first, filenames[i].second, hash});
         }
     }
 

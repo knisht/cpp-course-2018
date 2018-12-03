@@ -26,10 +26,12 @@ add_executable(index_test
 add_executable(librarian
     ${SOURCE_DIR}/main.cpp
     ${SOURCE_DIR}/mainwindow.cpp
-    ${SOURCE_DIR}/mainwindow.h
+    ${INCLUDE_DIR}/mainwindow.h
     ${SOURCE_DIR}/mainwindow.ui
     ${INCLUDE_DIR}/TrigramIndex.h
     ${SOURCE_DIR}/TrigramIndex.cpp
+    ${SOURCE_DIR}/indexworker.cpp
+    ${INCLUDE_DIR}/indexworker.h
     )
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)

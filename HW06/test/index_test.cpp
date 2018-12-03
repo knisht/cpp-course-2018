@@ -14,8 +14,6 @@
 
 namespace fs = std::filesystem;
 
-using SubstringOccurrence = TrigramIndex::SubstringOccurrence;
-
 std::ifstream::pos_type file_size(const char *filename)
 {
     std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
@@ -40,7 +38,8 @@ TEST(correctness, stable)
     std::string directory = "./tmp/";
     fs::create_directory(directory);
     std::ofstream(directory + "a") << "green" << std::flush;
-    TrigramIndex index{"./tmp"};
+    TrigramIndex index;
+    //    index.setUp("./tmp");
     fs::remove_all(directory);
 }
 
@@ -49,7 +48,8 @@ TEST(correctness, basic_finding)
     std::string directory = "./tmp";
     fs::create_directories(directory);
     std::ofstream(directory + "/a") << "green" << std::flush;
-    TrigramIndex index{"./tmp"};
+    TrigramIndex index;
+    //    index.setUp("./tmp");
 
     std::vector<SubstringOccurrence> occurrences = index.findSubstring("green");
     std::vector<SubstringOccurrence> expected{{"./tmp/a", {0}}};
@@ -64,7 +64,8 @@ TEST(correctness, multiple_finding)
     fs::create_directories(directory);
     std::ofstream(directory + "/a") << "abacaba" << std::flush;
     std::ofstream(directory + "/b") << "dabacaba" << std::flush;
-    TrigramIndex index{"./tmp"};
+    TrigramIndex index;
+    //    index.setUp("./tmp");
 
     std::vector<SubstringOccurrence> occurrences = index.findSubstring("aba");
     std::vector<SubstringOccurrence> expected{{"./tmp/a", {0, 4}},
@@ -80,7 +81,8 @@ TEST(correctness, absence)
     fs::create_directories(directory);
     std::ofstream(directory + "/a") << "abacaba" << std::flush;
     std::ofstream(directory + "/b") << "dabacaba" << std::flush;
-    TrigramIndex index{"./tmp"};
+    TrigramIndex index;
+    //    index.setUp("./tmp");
 
     std::vector<SubstringOccurrence> occurrences = index.findSubstring("kek");
     std::vector<SubstringOccurrence> expected{};
@@ -95,7 +97,8 @@ TEST(correctness, one_letter)
     fs::create_directories(directory);
     std::ofstream(directory + "/a") << "abacaba" << std::flush;
     std::ofstream(directory + "/b") << "dabacaba" << std::flush;
-    TrigramIndex index{"./tmp"};
+    TrigramIndex index;
+    //    index.setUp("./tmp");
 
     std::vector<SubstringOccurrence> occurrences = index.findSubstring("a");
     std::vector<SubstringOccurrence> expected{{"./tmp/a", {0, 2, 4}},
@@ -116,7 +119,8 @@ TEST(correctness, deep)
     std::ofstream(subdirectory + "/a") << "give it a lick" << std::flush;
     std::ofstream(subdirectory + "/d")
         << "mmm it tastes just like raisins" << std::flush;
-    TrigramIndex index{"./tmp"};
+    TrigramIndex index;
+    //    index.setUp("./tmp");
 
     std::vector<SubstringOccurrence> occurrences = index.findSubstring("it ");
     std::vector<SubstringOccurrence> expected{{"./tmp/wow/a", {5}},
@@ -132,7 +136,8 @@ TEST(correctness, overlapping_strings)
     fs::create_directories(directory);
     std::ofstream(directory + "/a") << "aabbaabbaa" << std::flush;
     std::ofstream(directory + "/b") << "aabbcaabbaac" << std::flush;
-    TrigramIndex index{"./tmp"};
+    TrigramIndex index;
+    //    index.setUp("./tmp");
 
     std::vector<SubstringOccurrence> occurrences =
         index.findSubstring("aabbaa");
@@ -150,7 +155,8 @@ TEST(correctness, time)
     //    std::ofstream(directory + "/a") << "abacaba" << std::flush;
     //    std::ofstream(directory + "/b") << "dabacaba" << std::flush;
     auto start = std::chrono::steady_clock::now();
-    TrigramIndex index{directory.c_str()};
+    TrigramIndex index;
+    //    index.setUp(directory.c_str());
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - start);
     std::cout << duration.count() << std::endl;

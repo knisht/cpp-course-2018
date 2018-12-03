@@ -54,7 +54,9 @@ std::vector<TrigramIndex::Document> getFileEntries(QString const &root);
 
 void unwrapTrigrams(TrigramIndex::Document &document);
 
-TrigramIndex::TrigramIndex(QString const &root)
+TrigramIndex::TrigramIndex() : valid(false) {}
+
+void TrigramIndex::setUp(QString const &root)
 {
     documents = getFileEntries(root);
 #pragma omp parallel for
@@ -66,6 +68,7 @@ TrigramIndex::TrigramIndex(QString const &root)
             trigramsInFiles[pair.first].push_back(i);
         }
     }
+    valid = true;
 }
 
 std::vector<TrigramIndex::Document> getFileEntries(QString const &root)
@@ -191,7 +194,7 @@ std::vector<size_t> findExactOccurrences(TrigramIndex::Document const &doc,
     return result;
 }
 
-std::vector<TrigramIndex::SubstringOccurrence>
+std::vector<SubstringOccurrence>
 TrigramIndex::smallStringProcess(std::string const &target) const
 {
     std::unordered_set<size_t> fileIds;
@@ -200,7 +203,7 @@ TrigramIndex::smallStringProcess(std::string const &target) const
             fileIds.insert(pair.second.begin(), pair.second.end());
         }
     }
-    std::vector<TrigramIndex::SubstringOccurrence> result;
+    std::vector<SubstringOccurrence> result;
     for (size_t fileId : fileIds) {
         std::vector<size_t> occurrences;
         for (auto &pair : documents[fileId].trigramOccurrences) {
@@ -212,7 +215,8 @@ TrigramIndex::smallStringProcess(std::string const &target) const
         }
         // TODO: end of file trigrams
         // TODO: move occurrs
-        result.push_back({documents[fileId].filename, occurrences});
+        result.push_back(
+            SubstringOccurrence{documents[fileId].filename, occurrences});
     }
     for (auto &it : result) {
         std::sort(it.occurrences.begin(), it.occurrences.end());
@@ -223,7 +227,7 @@ TrigramIndex::smallStringProcess(std::string const &target) const
     return result;
 }
 
-std::vector<TrigramIndex::SubstringOccurrence>
+std::vector<SubstringOccurrence>
 TrigramIndex::findSubstring(QString const &target) const
 {
     std::string stdTarget = target.toStdString();
@@ -246,7 +250,7 @@ TrigramIndex::findSubstring(QString const &target) const
             mergeVectorToList(neccesaryFiles, trigramsInFiles.at(trigram));
         }
     }
-    std::vector<TrigramIndex::SubstringOccurrence> resultFiles;
+    std::vector<SubstringOccurrence> resultFiles;
     for (size_t fileId : neccesaryFiles) {
         resultFiles.push_back(
             {documents[fileId].filename,

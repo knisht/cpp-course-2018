@@ -1,30 +1,62 @@
 #ifndef TRIGRAM_INDEX_H
 #define TRIGRAM_INDEX_H
 
+#include <QEventLoop>
 #include <QString>
 #include <map>
 #include <set>
 #include <unordered_map>
 #include <vector>
 
+class SubstringOccurrence;
+
+Q_DECLARE_METATYPE(SubstringOccurrence)
+
+class SubstringOccurrence : public QObject
+{
+    Q_OBJECT
+public:
+    Q_INVOKABLE SubstringOccurrence()
+    {
+        qRegisterMetaType<SubstringOccurrence>();
+    }
+
+    Q_INVOKABLE SubstringOccurrence(QString const &string,
+                                    std::vector<size_t> vec)
+        : filename(string), occurrences(vec)
+    {
+        qRegisterMetaType<SubstringOccurrence>();
+    }
+
+    Q_INVOKABLE SubstringOccurrence(SubstringOccurrence const &other)
+        : filename(other.filename), occurrences(other.occurrences)
+    {
+        qRegisterMetaType<SubstringOccurrence>();
+    }
+
+    Q_INVOKABLE SubstringOccurrence operator=(SubstringOccurrence const &other)
+    {
+        qRegisterMetaType<SubstringOccurrence>();
+        filename = other.filename;
+        occurrences = other.occurrences;
+        return *this;
+    }
+
+    QString filename;
+    std::vector<size_t> occurrences;
+
+    friend bool operator==(SubstringOccurrence const &a,
+                           SubstringOccurrence const &b)
+    {
+        return a.filename == b.filename && a.occurrences == b.occurrences;
+    }
+};
+
 class TrigramIndex
 {
 public:
-    TrigramIndex(QString const &root);
-
-public:
-    struct SubstringOccurrence {
-        QString filename;
-        std::vector<size_t> occurrences;
-
-        friend bool operator==(SubstringOccurrence const &a,
-                               SubstringOccurrence const &b)
-        {
-            return a.filename == b.filename && a.occurrences == b.occurrences;
-        }
-    };
-
-    TrigramIndex operator=(TrigramIndex const &) = delete;
+    TrigramIndex();
+    void setUp(QString const &root);
 
     std::vector<SubstringOccurrence> findSubstring(QString const &target) const;
 
@@ -74,12 +106,13 @@ public:
     };
 
 private:
+    bool valid;
     std::unordered_map<Trigram, std::vector<size_t>, TrigramHash>
         trigramsInFiles;
     // TODO: put documents on disk
     std::vector<Document> documents;
 
-    std::vector<TrigramIndex::SubstringOccurrence>
+    std::vector<SubstringOccurrence>
     smallStringProcess(std::string const &target) const;
 };
 #endif // TRIGRAM_INDEX_H
