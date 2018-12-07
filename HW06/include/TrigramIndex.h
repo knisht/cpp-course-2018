@@ -105,10 +105,18 @@ public:
         Document(QString filename) : filename(filename), trigramOccurrences{} {}
     };
 
+    friend class IndexWorker;
+
 private:
     bool valid;
+    static std::vector<Document> getFileEntries(QString const &root);
     std::unordered_map<Trigram, std::vector<size_t>, TrigramHash>
         trigramsInFiles;
+    static void unwrapTrigrams(TrigramIndex::Document &document);
+    static std::vector<size_t> findExactOccurrences(Document const &doc,
+                                             std::string const &target);
+    static void mergeVectorToList(std::list<size_t> &destination,
+                           std::vector<size_t> const &source);
     // TODO: put documents on disk
     std::vector<Document> documents;
 

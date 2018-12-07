@@ -12,13 +12,16 @@ public:
 
     void setUpIndex(QString const &root);
 
-    void setDir(QString const &dir);
+    void interrupt();
+
 signals:
     void startedIndexing();
-    void finishedIndexing();
+    void finishedIndexing(QString const&);
     void startedFinding();
-    void finishedFinding();
-    void occurrenceFound(SubstringOccurrence);
+    void finishedFinding(QString const&);
+    void occurrenceFound(SubstringOccurrence const &);
+    void determinedFilesAmount(qint64 filesAmount);
+    void progressChanged(qint64 amount);
 
 public slots:
     void indexate(QString const &path);
@@ -27,7 +30,7 @@ public slots:
 
 private:
     TrigramIndex index;
-    QString currentDir;
+    bool needInterrupt;
 };
 
 #endif // INDEXWORKER_H

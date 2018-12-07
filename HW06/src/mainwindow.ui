@@ -21,34 +21,6 @@
     </sizepolicy>
    </property>
    <layout class="QGridLayout" name="gridLayout">
-    <item row="4" column="1" rowspan="2">
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <item>
-       <widget class="QTextEdit" name="stringInput">
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>50</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="searchButton">
-        <property name="text">
-         <string>Find text</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item row="6" column="1">
-     <widget class="QProgressBar" name="progressBar">
-      <property name="value">
-       <number>24</number>
-      </property>
-     </widget>
-    </item>
     <item row="3" column="1">
      <layout class="QHBoxLayout" name="workareaLayout">
       <item>
@@ -70,6 +42,9 @@
          <widget class="QTextEdit" name="filesContent">
           <property name="readOnly">
            <bool>true</bool>
+          </property>
+          <property name="textInteractionFlags">
+           <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
           </property>
          </widget>
         </item>
@@ -122,6 +97,41 @@
       </item>
      </layout>
     </item>
+    <item row="6" column="1">
+     <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <item>
+       <widget class="QProgressBar" name="progressBar">
+        <property name="value">
+         <number>24</number>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="stopButton">
+        <property name="text">
+         <string>Cancel</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="4" column="1" rowspan="2">
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QTextEdit" name="stringInput">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="placeholderText">
+         <string>Input string you want to find</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -138,22 +148,6 @@
  </widget>
  <resources/>
  <connections>
-  <connection>
-   <sender>searchButton</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>findSubstring()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>774</x>
-     <y>562</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>413</x>
-     <y>311</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>filesWidget</sender>
    <signal>itemDoubleClicked(QListWidgetItem*)</signal>
@@ -218,6 +212,38 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>stopButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>stopActions()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>774</x>
+     <y>573</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>413</x>
+     <y>311</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>stringInput</sender>
+   <signal>textChanged()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>findSubstring()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>369</x>
+     <y>525</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>413</x>
+     <y>311</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>findSubstring()</slot>
@@ -225,5 +251,6 @@
   <slot>changeDirectory()</slot>
   <slot>previousOccurrence()</slot>
   <slot>nextOccurrence()</slot>
+  <slot>stopActions()</slot>
  </slots>
 </ui>

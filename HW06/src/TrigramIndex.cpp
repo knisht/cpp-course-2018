@@ -59,19 +59,11 @@ TrigramIndex::TrigramIndex() : valid(false) {}
 void TrigramIndex::setUp(QString const &root)
 {
     documents = getFileEntries(root);
-#pragma omp parallel for
-    for (size_t i = 0; i < documents.size(); ++i) {
-        unwrapTrigrams(documents[i]);
-    }
-    for (size_t i = 0; i < documents.size(); ++i) {
-        for (auto &pair : documents[i].trigramOccurrences) {
-            trigramsInFiles[pair.first].push_back(i);
-        }
-    }
+
     valid = true;
 }
 
-std::vector<TrigramIndex::Document> getFileEntries(QString const &root)
+std::vector<TrigramIndex::Document> TrigramIndex::getFileEntries(QString const &root)
 {
     QDirIterator dirIterator(root, QDir::NoFilter,
                              QDirIterator::Subdirectories);
@@ -87,7 +79,7 @@ std::vector<TrigramIndex::Document> getFileEntries(QString const &root)
     return documents;
 }
 
-void unwrapTrigrams(TrigramIndex::Document &document)
+void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
 {
     QFile fileInstance{document.filename};
     // TODO: make error notifying
@@ -145,7 +137,7 @@ void unwrapTrigrams(TrigramIndex::Document &document)
     fileInstance.close();
 }
 
-void mergeVectorToList(std::list<size_t> &destination,
+void TrigramIndex::mergeVectorToList(std::list<size_t> &destination,
                        std::vector<size_t> const &source)
 {
     auto it = destination.begin();
@@ -162,7 +154,7 @@ void mergeVectorToList(std::list<size_t> &destination,
     }
 }
 
-std::vector<size_t> findExactOccurrences(TrigramIndex::Document const &doc,
+std::vector<size_t> TrigramIndex::findExactOccurrences(Document const &doc,
                                          std::string const &target)
 {
     QFile fileInstance(doc.filename);
