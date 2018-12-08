@@ -9,44 +9,16 @@
 #include <unordered_set>
 #include <utility>
 
-size_t TrigramIndex::Trigram::encode(const char *target) const
-{
-    return static_cast<size_t>(target[0] << 16) +
-           (static_cast<size_t>(target[1]) << 8) +
-           (static_cast<size_t>(target[2]));
-}
 
-std::string TrigramIndex::Trigram::toString() const
-{
-    return {static_cast<char>(trigram_code >> 16),
-            static_cast<char>(trigram_code >> 8),
-            static_cast<char>(trigram_code)};
-}
 
 void TrigramIndex::printDocuments()
 {
+    std::cout << "Files at all: " << documents.size() <<std::endl;
     for (auto &it : documents) {
         std::cout << it.filename.toStdString() << std::endl;
     }
 }
 
-bool TrigramIndex::Trigram::substr(std::string const &target) const
-{
-    if (target.size() >= 3) {
-        return false;
-    }
-    if (target.size() == 2) {
-        size_t target_code = static_cast<size_t>((target[0] << 8) + target[1]);
-        if (target_code == (trigram_code & ((1 << 16) - 1))) {
-            return true;
-        } else {
-            return false;
-        }
-    } else {
-        return static_cast<size_t>(target[0]) ==
-               (trigram_code & ((1 << 8) - 1));
-    }
-}
 
 const qint32 BUF_SIZE = 1 << 20;
 
@@ -56,28 +28,6 @@ void unwrapTrigrams(TrigramIndex::Document &document);
 
 TrigramIndex::TrigramIndex() : valid(false) {}
 
-void TrigramIndex::setUp(QString const &root)
-{
-    documents = getFileEntries(root);
-
-    valid = true;
-}
-
-std::vector<TrigramIndex::Document> TrigramIndex::getFileEntries(QString const &root)
-{
-    QDirIterator dirIterator(root, QDir::NoFilter,
-                             QDirIterator::Subdirectories);
-    std::vector<TrigramIndex::Document> documents;
-    while (dirIterator.hasNext()) {
-        dirIterator.next();
-        if (dirIterator.fileInfo().isDir()) {
-            continue;
-        }
-        documents.push_back(
-            TrigramIndex::Document(QFile(dirIterator.filePath()).fileName()));
-    }
-    return documents;
-}
 
 void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
 {
@@ -137,116 +87,116 @@ void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
     fileInstance.close();
 }
 
-void TrigramIndex::mergeVectorToList(std::list<size_t> &destination,
-                       std::vector<size_t> const &source)
-{
-    auto it = destination.begin();
-    for (size_t currentIndex : source) {
-        while (it != destination.end() && *it < currentIndex) {
-            destination.erase(it++);
-        }
-        if (it == destination.end()) {
-            return;
-        }
-        if (*it == currentIndex) {
-            ++it;
-        }
-    }
-}
+//void TrigramIndex::mergeVectorToList(std::list<size_t> &destination,
+//                       std::vector<size_t> const &source)
+//{
+//    auto it = destination.begin();
+//    for (size_t currentIndex : source) {
+//        while (it != destination.end() && *it < currentIndex) {
+//            destination.erase(it++);
+//        }
+//        if (it == destination.end()) {
+//            return;
+//        }
+//        if (*it == currentIndex) {
+//            ++it;
+//        }
+//    }
+//}
 
-std::vector<size_t> TrigramIndex::findExactOccurrences(Document const &doc,
-                                         std::string const &target)
-{
-    QFile fileInstance(doc.filename);
-    fileInstance.open(QFile::ReadOnly);
-    size_t currentPosition = 0;
-    TrigramIndex::Trigram start{target};
-    std::string buf(target.size(), '\0');
-    std::vector<size_t> result;
-    if (doc.trigramOccurrences.count(start) != 0) {
-        for (size_t occurrence : doc.trigramOccurrences.at(start)) {
-            if (occurrence < currentPosition) {
-                size_t delta = currentPosition - occurrence;
-                for (size_t i = 0; i < delta; ++i) {
-                    buf[i] = buf[i + target.size() - delta];
-                }
-                fileInstance.read(&buf[0] + delta,
-                                  static_cast<int>(target.size() - delta));
-            } else {
-                fileInstance.skip(
-                    static_cast<int>(occurrence - currentPosition));
-                fileInstance.read(&buf[0], static_cast<int>(target.size()));
-            }
-            if (strncmp(&buf[0], &target[0], target.size()) == 0) {
-                result.push_back(occurrence);
-            }
-            currentPosition = occurrence + target.size();
-        }
-    }
-    return result;
-}
+//std::vector<size_t> TrigramIndex::findExactOccurrences(Document const &doc,
+//                                         std::string const &target)
+//{
+//    QFile fileInstance(doc.filename);
+//    fileInstance.open(QFile::ReadOnly);
+//    size_t currentPosition = 0;
+//    TrigramIndex::Trigram start{target};
+//    std::string buf(target.size(), '\0');
+//    std::vector<size_t> result;
+//    if (doc.trigramOccurrences.count(start) != 0) {
+//        for (size_t occurrence : doc.trigramOccurrences.at(start)) {
+//            if (occurrence < currentPosition) {
+//                size_t delta = currentPosition - occurrence;
+//                for (size_t i = 0; i < delta; ++i) {
+//                    buf[i] = buf[i + target.size() - delta];
+//                }
+//                fileInstance.read(&buf[0] + delta,
+//                                  static_cast<int>(target.size() - delta));
+//            } else {
+//                fileInstance.skip(
+//                    static_cast<int>(occurrence - currentPosition));
+//                fileInstance.read(&buf[0], static_cast<int>(target.size()));
+//            }
+//            if (strncmp(&buf[0], &target[0], target.size()) == 0) {
+//                result.push_back(occurrence);
+//            }
+//            currentPosition = occurrence + target.size();
+//        }
+//    }
+//    return result;
+//}
 
-std::vector<SubstringOccurrence>
-TrigramIndex::smallStringProcess(std::string const &target) const
-{
-    std::unordered_set<size_t> fileIds;
-    for (auto &pair : trigramsInFiles) {
-        if (pair.first.substr(target)) {
-            fileIds.insert(pair.second.begin(), pair.second.end());
-        }
-    }
-    std::vector<SubstringOccurrence> result;
-    for (size_t fileId : fileIds) {
-        std::vector<size_t> occurrences;
-        for (auto &pair : documents[fileId].trigramOccurrences) {
-            if (pair.first.substr(target)) {
-                for (size_t j : pair.second) {
-                    occurrences.push_back(j);
-                }
-            }
-        }
-        // TODO: end of file trigrams
-        // TODO: move occurrs
-        result.push_back(
-            SubstringOccurrence{documents[fileId].filename, occurrences});
-    }
-    for (auto &it : result) {
-        std::sort(it.occurrences.begin(), it.occurrences.end());
-        it.occurrences.erase(
-            std::unique(it.occurrences.begin(), it.occurrences.end()),
-            it.occurrences.end());
-    }
-    return result;
-}
+//std::vector<SubstringOccurrence>
+//TrigramIndex::smallStringProcess(std::string const &target) const
+//{
+//    std::unordered_set<size_t> fileIds;
+//    for (auto &pair : trigramsInFiles) {
+//        if (pair.first.substr(target)) {
+//            fileIds.insert(pair.second.begin(), pair.second.end());
+//        }
+//    }
+//    std::vector<SubstringOccurrence> result;
+//    for (size_t fileId : fileIds) {
+//        std::vector<size_t> occurrences;
+//        for (auto &pair : documents[fileId].trigramOccurrences) {
+//            if (pair.first.substr(target)) {
+//                for (size_t j : pair.second) {
+//                    occurrences.push_back(j);
+//                }
+//            }
+//        }
+//        // TODO: end of file trigrams
+//        // TODO: move occurrs
+//        result.push_back(
+//            SubstringOccurrence{documents[fileId].filename, occurrences});
+//    }
+//    for (auto &it : result) {
+//        std::sort(it.occurrences.begin(), it.occurrences.end());
+//        it.occurrences.erase(
+//            std::unique(it.occurrences.begin(), it.occurrences.end()),
+//            it.occurrences.end());
+//    }
+//    return result;
+//}
 
-std::vector<SubstringOccurrence>
-TrigramIndex::findSubstring(QString const &target) const
-{
-    std::string stdTarget = target.toStdString();
-    if (stdTarget.size() <= 2) {
-        return smallStringProcess(stdTarget);
-    }
-    std::unordered_set<TrigramIndex::Trigram, TrigramHash> targetTrigrams;
-    for (size_t i = 0; i < stdTarget.size() - 2; ++i) {
-        targetTrigrams.insert({&stdTarget.c_str()[i]});
-    }
-    std::list<size_t> neccesaryFiles;
-    if (trigramsInFiles.count(*targetTrigrams.begin()) == 0) {
-        return {};
-    }
-    for (size_t fileId : trigramsInFiles.at(*targetTrigrams.begin())) {
-        neccesaryFiles.push_back(fileId);
-    }
-    for (Trigram const &trigram : targetTrigrams) {
-        if (trigramsInFiles.count(trigram) > 0) {
-            mergeVectorToList(neccesaryFiles, trigramsInFiles.at(trigram));
-        }
-    }
-    std::vector<SubstringOccurrence> resultFiles;
-    for (size_t fileId : neccesaryFiles) {
-        resultFiles.push_back(
-            {documents[fileId].filename,
-             findExactOccurrences(documents[fileId], stdTarget)});
-    }
-    return resultFiles;
-}
+//std::vector<SubstringOccurrence>
+//TrigramIndex::findSubstring(QString const &target) const
+//{
+//    std::string stdTarget = target.toStdString();
+//    if (stdTarget.size() <= 2) {
+//        return smallStringProcess(stdTarget);
+//    }
+//    std::unordered_set<TrigramIndex::Trigram, TrigramHash> targetTrigrams;
+//    for (size_t i = 0; i < stdTarget.size() - 2; ++i) {
+//        targetTrigrams.insert({&stdTarget.c_str()[i]});
+//    }
+//    std::list<size_t> neccesaryFiles;
+//    if (trigramsInFiles.count(*targetTrigrams.begin()) == 0) {
+//        return {};
+//    }
+//    for (size_t fileId : trigramsInFiles.at(*targetTrigrams.begin())) {
+//        neccesaryFiles.push_back(fileId);
+//    }
+//    for (Trigram const &trigram : targetTrigrams) {
+//        if (trigramsInFiles.count(trigram) > 0) {
+//            mergeVectorToList(neccesaryFiles, trigramsInFiles.at(trigram));
+//        }
+//    }
+//    std::vector<SubstringOccurrence> resultFiles;
+//    for (size_t fileId : neccesaryFiles) {
+//        resultFiles.push_back(
+//            {documents[fileId].filename,
+//             findExactOccurrences(documents[fileId], stdTarget)});
+//    }
+//    return resultFiles;
+//}

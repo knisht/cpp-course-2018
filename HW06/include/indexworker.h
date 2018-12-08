@@ -14,6 +14,8 @@ public:
 
     void interrupt();
 
+    void increaseProgress();
+
 signals:
     void startedIndexing();
     void finishedIndexing(QString const&);
@@ -25,12 +27,12 @@ signals:
 
 public slots:
     void indexate(QString const &path);
-    // TODO: online fetch
     void findSubstring(QString const &substring);
 
 private:
     TrigramIndex index;
     bool needInterrupt;
+    TaskContext<IndexWorker> context;
 };
 
 #endif // INDEXWORKER_H

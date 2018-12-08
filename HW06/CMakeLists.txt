@@ -21,7 +21,10 @@ add_executable(index_test
     ${TEST_DIR}/gtest/gtest-all.cc
     ${TEST_DIR}/index_test.cpp
     ${INCLUDE_DIR}/TrigramIndex.h
-    ${SOURCE_DIR}/TrigramIndex.cpp)
+    ${INCLUDE_DIR}/trigram.h
+    ${SOURCE_DIR}/TrigramIndex.cpp
+    ${SOURCE_DIR}/trigram.cpp
+    )
 
 add_executable(librarian
     ${SOURCE_DIR}/main.cpp
@@ -32,6 +35,8 @@ add_executable(librarian
     ${SOURCE_DIR}/TrigramIndex.cpp
     ${SOURCE_DIR}/indexworker.cpp
     ${INCLUDE_DIR}/indexworker.h
+    ${INCLUDE_DIR}/trigram.h
+    ${SOURCE_DIR}/trigram.cpp
     )
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)

@@ -7,6 +7,9 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <functional>
+#include <QDirIterator>
+#include "trigram.h"
 
 class SubstringOccurrence;
 
@@ -52,75 +55,86 @@ public:
     }
 };
 
+template <typename Caller>
+struct TaskContext {
+    bool stopFlag;
+    Caller* caller;
+    void (Caller::*callOnSuccess)();
+};
+
 class TrigramIndex
 {
 public:
     TrigramIndex();
-    void setUp(QString const &root);
-
     std::vector<SubstringOccurrence> findSubstring(QString const &target) const;
-
     void printDocuments();
 
-    struct Trigram {
 
-        Trigram(char *c_str) : trigram_code(encode(c_str)) {}
-
-        Trigram(std::string str) : trigram_code(encode(str.data())) {}
-
-        Trigram(size_t code) : trigram_code(code) {}
-
-        friend bool operator<(Trigram const &a, Trigram const &b)
-        {
-            return a.trigram_code < b.trigram_code;
-        }
-
-        friend bool operator==(Trigram const &a, Trigram const &b)
-        {
-            return a.trigram_code == b.trigram_code;
-        }
-
-        size_t code() const { return trigram_code; }
-        bool substr(std::string const &) const;
-        std::string toString() const;
-
-    private:
-        size_t encode(const char *) const;
-        size_t trigram_code;
-    };
-
-private:
-    struct TrigramHash {
-        size_t operator()(Trigram const &trigram) const
-        {
-            return trigram.code();
-        }
-    };
-
-public:
     struct Document {
         QString filename;
-        std::unordered_map<Trigram, std::vector<size_t>, TrigramHash>
+        std::unordered_map<Trigram, std::vector<size_t>, Trigram::TrigramHash>
             trigramOccurrences;
         Document(QString filename) : filename(filename), trigramOccurrences{} {}
     };
 
-    friend class IndexWorker;
+    template <typename T>
+    static std::vector<Document> getFileEntries(QString const &root, TaskContext<T> *context)
+    {
+        QDirIterator dirIterator(root, QDir::NoFilter,
+                                 QDirIterator::Subdirectories);
+        std::vector<TrigramIndex::Document> documents;
+        while (dirIterator.hasNext() && !context->stopFlag) {
+            dirIterator.next();
+            if (dirIterator.fileInfo().isDir()) {
+                continue;
+            }
+            documents.push_back(
+                TrigramIndex::Document(QFile(dirIterator.filePath()).fileName()));
+        }
+        return documents;
+    }
 
+    template <typename T>
+    static void calculateTrigrams(std::vector<Document>& documents, TaskContext<T> *context) {
+        for (size_t i = 0; i < documents.size(); ++i) {
+            if (context->stopFlag) {
+                continue;
+            }
+            unwrapTrigrams(documents[i]);
+            (context->caller->*(context->callOnSuccess))();
+        }
+    }
+
+    template <typename T>
+    void setUpDocuments(std::vector<Document> const& documents, TaskContext<T> *context) {
+        for (size_t i = 0; i < documents.size(); ++i) {
+            if (documents[i].trigramOccurrences.size() > 0) {
+                this->documents.push_back(documents[i]);
+                if (context->stopFlag) {
+                    break;
+                }
+                for (auto &pair : documents[i].trigramOccurrences) {
+                    this->trigramsInFiles[pair.first].push_back(i);
+                }
+            }
+            (context->caller->*(context->callOnSuccess))();
+        }
+    }
+//    static std::vector<size_t> findExactOccurrences(Document const &doc,
+//                                             std::string const &target);
+//    static void mergeVectorToList(std::list<size_t> &destination,
+//                           std::vector<size_t> const &source);
 private:
+
     bool valid;
-    static std::vector<Document> getFileEntries(QString const &root);
-    std::unordered_map<Trigram, std::vector<size_t>, TrigramHash>
-        trigramsInFiles;
-    static void unwrapTrigrams(TrigramIndex::Document &document);
-    static std::vector<size_t> findExactOccurrences(Document const &doc,
-                                             std::string const &target);
-    static void mergeVectorToList(std::list<size_t> &destination,
-                           std::vector<size_t> const &source);
+
     // TODO: put documents on disk
     std::vector<Document> documents;
 
-    std::vector<SubstringOccurrence>
-    smallStringProcess(std::string const &target) const;
+    std::unordered_map<Trigram, std::vector<size_t>, Trigram::TrigramHash>
+        trigramsInFiles;
+    static void unwrapTrigrams(TrigramIndex::Document &document);
+//    std::vector<SubstringOccurrence>
+//    smallStringProcess(std::string const &target) const;
 };
 #endif // TRIGRAM_INDEX_H
