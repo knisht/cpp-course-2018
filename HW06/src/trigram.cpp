@@ -11,7 +11,6 @@ bool operator<(Trigram const &a, Trigram const &b)
     return a.trigram_code < b.trigram_code;
 }
 
-
 bool operator>(Trigram const &a, Trigram const &b)
 {
     return !(a < b) && !(a == b);
@@ -49,7 +48,6 @@ bool Trigram::substr(std::string const &target) const
     }
 }
 
-
 std::string Trigram::toString() const
 {
     return {static_cast<char>(trigram_code >> 16),
@@ -58,9 +56,5 @@ std::string Trigram::toString() const
 }
 
 struct TrigramHash {
-    size_t operator()(Trigram const &trigram) const
-    {
-        return trigram.code();
-    }
+    size_t operator()(Trigram const &trigram) const { return trigram.code(); }
 };
-

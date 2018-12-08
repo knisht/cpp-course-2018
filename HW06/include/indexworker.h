@@ -15,12 +15,13 @@ public:
     void interrupt();
 
     void increaseProgress();
+    void catchOccurrence(SubstringOccurrence const &);
 
 signals:
     void startedIndexing();
-    void finishedIndexing(QString const&);
+    void finishedIndexing(QString const &);
     void startedFinding();
-    void finishedFinding(QString const&);
+    void finishedFinding(QString const &);
     void occurrenceFound(SubstringOccurrence const &);
     void determinedFilesAmount(qint64 filesAmount);
     void progressChanged(qint64 amount);
@@ -33,6 +34,7 @@ private:
     TrigramIndex index;
     bool needInterrupt;
     TaskContext<IndexWorker> context;
+    TaskContext<IndexWorker, const SubstringOccurrence &> senderContext;
 };
 
 #endif // INDEXWORKER_H

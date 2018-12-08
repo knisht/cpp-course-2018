@@ -1,7 +1,7 @@
 #ifndef TRIGRAM_H
 #define TRIGRAM_H
-#include <vector>
 #include <string>
+#include <vector>
 
 struct Trigram {
 
@@ -29,10 +29,10 @@ struct Trigram {
             return trigram.code();
         }
     };
+
 private:
     size_t encode(const char *) const;
     size_t trigram_code;
 };
-
 
 #endif // TRIGRAM_H

@@ -3,10 +3,10 @@
 
 #include "indexworker.h"
 #include <QDebug>
-#include <QListWidget>
+#include <QListWidgetItem>
 #include <QMainWindow>
-#include <QThread>
 #include <QTextCursor>
+#include <QThread>
 
 namespace Ui
 {
@@ -34,9 +34,9 @@ public slots:
 
 private slots:
     void onStartedIndexing();
-    void onFinishedIndexing(QString const&);
+    void onFinishedIndexing(QString const &);
     void onStartedFinding();
-    void onFinishedFinding(QString const&);
+    void onFinishedFinding(QString const &);
 
 signals:
     void indexate(QString const &path);
@@ -44,11 +44,12 @@ signals:
     void interrupt();
 
 private:
-
     struct CursorPosition {
         int occurrenceIndex;
-        SubstringOccurrence* document;
+        SubstringOccurrence *document;
     } cursor;
+
+    void renderText();
 
     Ui::MainWindow *ui;
     QString currentDir;
@@ -57,6 +58,7 @@ private:
     QThread thread;
     QTextCursor defaultCursor;
     IndexWorker worker;
+    QString curFileName;
 };
 
 #endif // MAINWINDOW_H

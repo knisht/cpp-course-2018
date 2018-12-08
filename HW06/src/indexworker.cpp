@@ -2,76 +2,47 @@
 #include <QDebug>
 #include <unordered_set>
 
-IndexWorker::IndexWorker(QObject *parent)
-    : QObject(parent), index()
+IndexWorker::IndexWorker(QObject *parent) : QObject(parent), index()
 {
     context.stopFlag = false;
     context.caller = this;
     context.callOnSuccess = &IndexWorker::increaseProgress;
+    senderContext.stopFlag = false;
+    senderContext.caller = this;
+    senderContext.callOnSuccess = &IndexWorker::catchOccurrence;
 }
 
+void IndexWorker::catchOccurrence(SubstringOccurrence const &occurrence)
+{
+    emit occurrenceFound(occurrence);
+}
 
 void IndexWorker::findSubstring(QString const &substring)
 {
-    index.printDocuments();
-//    needInterrupt = false;
-//    emit startedFinding();
-//    qDebug() << substring << " <-- search";
-//    std::string stdTarget = substring.toStdString();
-//    if (stdTarget.size() <= 2) {
-//        auto result = index.smallStringProcess(stdTarget);
-//        for (auto&& occurrence : result) {
-//            // TODO: small file online emit
-//            emit occurrenceFound(occurrence);
-//        }
-//        if (needInterrupt) {
-//            emit finishedFinding("interrupted");
-//        } else {
-//            emit finishedFinding("");
-//        }
-//        return;
-//    }
-//    std::unordered_set<TrigramIndex::Trigram, TrigramIndex::TrigramHash> targetTrigrams;
-//    for (size_t i = 0; i < stdTarget.size() - 2; ++i) {
-//        targetTrigrams.insert({&stdTarget.c_str()[i]});
-//    }
-//    std::list<size_t> neccesaryFiles;
-//    if (index.trigramsInFiles.count(*targetTrigrams.begin()) == 0) {
-//        if (needInterrupt) {
-//            emit finishedFinding("interrupted");
-//        } else {
-//            emit finishedFinding("");
-//        }
-//        return;
-//    }
-//    for (size_t fileId : index.trigramsInFiles.at(*targetTrigrams.begin())) {
-//        neccesaryFiles.push_back(fileId);
-//    }
-//    for (TrigramIndex::Trigram const &trigram : targetTrigrams) {
-//        if (index.trigramsInFiles.count(trigram) > 0) {
-//            TrigramIndex::mergeVectorToList(neccesaryFiles, index.trigramsInFiles.at(trigram));
-//        }
-//    }
-//    emit determinedFilesAmount(neccesaryFiles.size());
-//    std::vector<SubstringOccurrence> resultFiles;
-//    for (size_t fileId : neccesaryFiles) {
-//        if (needInterrupt) {
-//            break;
-//        }
-//        emit occurrenceFound(
-//            {index.documents[fileId].filename,
-//             TrigramIndex::findExactOccurrences(index.documents[fileId], stdTarget)});
-//    }
-//    if (needInterrupt) {
-//        emit finishedFinding("interrupted");
-//    } else {
-//        emit finishedFinding("");
-//    }
+    context.stopFlag = false;
+    senderContext.stopFlag = false;
+    emit startedFinding();
+    qDebug() << substring << " <-- search";
+    std::string stdTarget = substring.toStdString();
+    auto fileIds = index.getCandidateFileIds(stdTarget, &context);
+    if (fileIds.size() == 0) {
+        emit finishedFinding("");
+        return;
+    }
+    qDebug() << "found ids!";
+    emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
+    // TODO: just first occurr is ok, exat places are matter only if user wants
+    // them
+    index.findOccurrencesInFiles(fileIds, stdTarget, &senderContext);
+
+    if (context.stopFlag) {
+        emit finishedFinding("interrupted");
+    } else {
+        emit finishedFinding("");
+    }
 }
 
-void IndexWorker::increaseProgress() {
-    emit progressChanged(1);
-}
+void IndexWorker::increaseProgress() { emit progressChanged(1); }
 
 void IndexWorker::indexate(QString const &path)
 {
@@ -91,7 +62,9 @@ void IndexWorker::indexate(QString const &path)
     }
 }
 
-void IndexWorker::interrupt() {
+void IndexWorker::interrupt()
+{
     qDebug() << "interrupting...";
     context.stopFlag = true;
+    senderContext.stopFlag = true;
 }
