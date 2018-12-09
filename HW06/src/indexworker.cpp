@@ -10,6 +10,14 @@ IndexWorker::IndexWorker(QObject *parent) : QObject(parent), index()
     senderContext.stopFlag = false;
     senderContext.caller = this;
     senderContext.callOnSuccess = &IndexWorker::catchOccurrence;
+    connect(&watcher, SIGNAL(fileChanged(const QString &)), this,
+            SLOT(processChangedFile(const QString &)));
+}
+
+void IndexWorker::processChangedFile(const QString &path)
+{
+    index.reprocessFile(path);
+    // TODO: emit render text
 }
 
 void IndexWorker::catchOccurrence(SubstringOccurrence const &occurrence)
@@ -46,6 +54,13 @@ void IndexWorker::increaseProgress() { emit progressChanged(1); }
 
 void IndexWorker::indexate(QString const &path)
 {
+
+    // TODO: push watcher to taskContext
+    for (auto document : index.getDocuments()) {
+        watcher.removePath(document.filename);
+    }
+    index.flush();
+    currentDir = path;
     context.stopFlag = false;
     emit startedIndexing();
     qDebug() << "index started";
@@ -54,6 +69,9 @@ void IndexWorker::indexate(QString const &path)
     qDebug() << documents.size();
     TrigramIndex::calculateTrigrams(documents, &context);
     index.setUpDocuments(documents, &context);
+    for (auto document : index.getDocuments()) {
+        watcher.addPath(document.filename);
+    }
     qDebug() << "indexing ended";
     if (context.stopFlag) {
         emit finishedIndexing("interrupted");

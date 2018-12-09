@@ -22,11 +22,12 @@ struct Trigram {
     std::string toString() const;
 
     friend class TrigramIndex;
+    friend struct TrigramHash;
 
     struct TrigramHash {
-        size_t operator()(Trigram const &trigram) const
+        inline size_t operator()(Trigram const &trigram) const
         {
-            return trigram.code();
+            return trigram.trigram_code;
         }
     };
 

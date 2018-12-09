@@ -54,7 +54,3 @@ std::string Trigram::toString() const
             static_cast<char>(trigram_code >> 8),
             static_cast<char>(trigram_code)};
 }
-
-struct TrigramHash {
-    size_t operator()(Trigram const &trigram) const { return trigram.code(); }
-};

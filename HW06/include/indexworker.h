@@ -2,6 +2,7 @@
 #define INDEXWORKER_H
 
 #include "TrigramIndex.h"
+#include <QFileSystemWatcher>
 #include <QObject>
 
 class IndexWorker : public QObject
@@ -30,9 +31,13 @@ public slots:
     void indexate(QString const &path);
     void findSubstring(QString const &substring);
 
+private slots:
+    void processChangedFile(const QString &);
+
 private:
     TrigramIndex index;
-    bool needInterrupt;
+    QDir currentDir;
+    QFileSystemWatcher watcher;
     TaskContext<IndexWorker> context;
     TaskContext<IndexWorker, const SubstringOccurrence &> senderContext;
 };

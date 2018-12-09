@@ -24,6 +24,14 @@ void TrigramIndex::catchSubstring(SubstringOccurrence const &substring)
     storage.push_back(substring);
 }
 
+void TrigramIndex::coutTime(decltype(std::chrono::steady_clock::now()) start,
+                            std::string msg)
+{
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start);
+    std::cout << msg << ": " << duration.count() << std::endl;
+}
+
 void TrigramIndex::setUp(QString const &root)
 {
     // TODO: enrich args in templates
@@ -60,16 +68,19 @@ void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
     if (fileSize <= 2) {
         return;
     }
-    qint32 block_size = qMin(fileSize, BUF_SIZE);
+    qint32 block_size = qMin(fileSize, BUF_SIZE) + 1;
     std::string bytes;
     bytes.resize(block_size, '\0');
+    bytes.back() = '\1';
     char last[3];
     int passed = 0;
+
+    auto start = std::chrono::steady_clock::now();
     while (fileSize > 0) {
-        fileInstance.read(&bytes[0], block_size);
-        bool has_zero = false;
-        for (int i = 0; i < block_size; ++i) {
-            if (bytes[i] == 0) {
+        size_t receivedBytes = fileInstance.read(&bytes[0], block_size);
+        bool has_zero = (strlen(&bytes[0]) < block_size);
+        for (int i = 0; i < receivedBytes / 4; ++i) {
+            if (bytes[4 * i] == 0) {
                 has_zero = true;
             }
         }
@@ -83,8 +94,10 @@ void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
             char trigramBuf[3] = {last[1], last[2], bytes[1]};
             document.trigramOccurrences.insert({trigramBuf});
         }
+#ifdef PARALLEL_INDEX
 #pragma omp parallel for
-        for (size_t i = 0; i < qMin(fileSize, block_size) - 2; ++i) {
+#endif
+        for (size_t i = 0; i < receivedBytes - 2; ++i) {
             size_t trigram_code = static_cast<size_t>(bytes[i] << 16) +
                                   static_cast<size_t>(bytes[i + 1] << 8) +
                                   static_cast<size_t>(bytes[i + 2]);
@@ -96,62 +109,57 @@ void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
         }
         last[0] = bytes[block_size - 2];
         last[1] = bytes[block_size - 1];
-        fileSize -= block_size;
+        fileSize -= receivedBytes;
         block_size = qMin(block_size, fileSize);
         ++passed;
     }
     fileInstance.close();
 }
 
-void TrigramIndex::mergeVectorToList(std::list<size_t> &destination,
-                                     std::vector<size_t> const &source)
+void TrigramIndex::mergeUnorderedSets(QSet<size_t> &destination,
+                                      QSet<size_t> const &source)
 {
-    auto it = destination.begin();
-    for (size_t currentIndex : source) {
-        while (it != destination.end() && *it < currentIndex) {
-            destination.erase(it++);
+    std::vector<size_t> fileIds;
+    for (size_t fileId : destination) {
+        if (source.contains(fileId) == 0) {
+            fileIds.push_back(fileId);
         }
-        if (it == destination.end()) {
-            return;
-        }
-        if (*it == currentIndex) {
-            ++it;
-        }
+    }
+    for (size_t fileId : fileIds) {
+        destination.remove(fileId);
     }
 }
 
-std::vector<size_t>
-TrigramIndex::findExactOccurrences(Document const &doc,
-                                   std::string const &target)
+void TrigramIndex::reprocessFile(QString const &filename)
 {
-    QFile fileInstance(doc.filename);
-    fileInstance.open(QFile::ReadOnly);
-    size_t fileSize = static_cast<size_t>(fileInstance.size());
-    size_t blockSize = std::min(fileSize, static_cast<size_t>(BUF_SIZE));
-
-    std::vector<size_t> result;
-    // TODO: square, slow
-    std::string buf(blockSize * 2, '\0');
-    fileInstance.read(&buf[0], blockSize);
-    fileSize -= blockSize;
-    for (size_t i = 0; i < blockSize - target.size() + 1; ++i) {
-        if (memcmp(&buf[i], &target[0], target.size()) == 0) {
-            result.push_back(i);
-        }
-    }
-    size_t passed = blockSize;
-    while (fileSize > 0) {
-        size_t receivedBytes = fileInstance.read(&buf[blockSize], blockSize);
-        fileSize -= receivedBytes;
-        for (size_t i = blockSize - target.size() + 1;
-             i < blockSize + receivedBytes - target.size(); ++i) {
-            if (memcmp(&buf[i], &target[0], target.size()) == 0) {
-                result.push_back(i + passed - target.size());
+    for (size_t i = 0; i < documents.size(); ++i) {
+        if (documents[i].filename == filename) {
+            qDebug() << "I'M REPROCESSING!!" << documents[i].filename;
+            for (Trigram const &trigram : documents[i].trigramOccurrences) {
+                trigramsInFiles[trigram].remove(i);
             }
+            unwrapTrigrams(documents[i]);
+            for (Trigram const &trigram : documents[i].trigramOccurrences) {
+                trigramsInFiles[trigram].insert(i);
+            }
+            return;
         }
-        passed += blockSize;
-        memcpy(&buf[0], &buf[blockSize], blockSize);
     }
-    fileInstance.close();
-    return result;
+    // so new file added
+    documents.push_back(Document{filename});
+    unwrapTrigrams(documents.back());
+    for (Trigram const &trigram : documents.back().trigramOccurrences) {
+        trigramsInFiles[trigram].insert(documents.size() - 1);
+    }
+}
+
+void TrigramIndex::flush()
+{
+    documents.clear();
+    trigramsInFiles.clear();
+}
+
+const std::vector<TrigramIndex::Document> &TrigramIndex::getDocuments() const
+{
+    return documents;
 }

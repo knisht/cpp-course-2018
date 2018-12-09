@@ -76,14 +76,17 @@ public:
     struct Document {
         QString filename;
         std::unordered_set<Trigram, Trigram::TrigramHash> trigramOccurrences;
-        Document(QString filename) : filename(filename), trigramOccurrences{} {}
+        explicit Document(QString filename)
+            : filename(filename), trigramOccurrences{}
+        {
+        }
     };
 
     template <typename T>
     static std::vector<Document> getFileEntries(QString const &root,
                                                 TaskContext<T> *context)
     {
-        QDirIterator dirIterator(root, QDir::NoFilter,
+        QDirIterator dirIterator(root, QDir::NoFilter | QDir::Hidden,
                                  QDirIterator::Subdirectories);
         std::vector<TrigramIndex::Document> documents;
         while (dirIterator.hasNext() && !context->stopFlag) {
@@ -101,7 +104,10 @@ public:
     static void calculateTrigrams(std::vector<Document> &documents,
                                   TaskContext<T> *context)
     {
+
+#ifdef PARALLEL_INDEX
 #pragma omp parallel for
+#endif
         for (size_t i = 0; i < documents.size(); ++i) {
             if (context->stopFlag) {
                 continue;
@@ -111,20 +117,29 @@ public:
         }
     }
 
+    static void coutTime(decltype(std::chrono::steady_clock::now()) start,
+                         std::string msg = "");
+
     template <typename T>
-    void setUpDocuments(std::vector<Document> const &documents,
+    void setUpDocuments(std::vector<Document> &documents,
                         TaskContext<T> *context)
     {
+        auto start = std::chrono::steady_clock::now();
         for (size_t i = 0; i < documents.size(); ++i) {
             if (documents[i].trigramOccurrences.size() > 0) {
-                this->documents.push_back(documents[i]);
-                if (context->stopFlag) {
-                    break;
-                }
-                for (auto &trigram : documents[i].trigramOccurrences) {
-                    this->trigramsInFiles[trigram].push_back(
-                        this->documents.size() - 1);
-                }
+                this->documents.push_back(std::move(documents[i]));
+            } else {
+                std::invoke(context->callOnSuccess, context->caller);
+            }
+        }
+        start = std::chrono::steady_clock::now();
+        QSet<size_t> set;
+        for (size_t i = 0; i < this->documents.size(); ++i) {
+            if (context->stopFlag) {
+                return;
+            }
+            for (auto &&it : this->documents[i].trigramOccurrences) {
+                this->trigramsInFiles[it].insert(i);
             }
             std::invoke(context->callOnSuccess, context->caller);
         }
@@ -136,11 +151,10 @@ public:
     {
         std::unordered_set<Trigram, Trigram::TrigramHash> targetTrigrams;
         if (target.size() < 3) {
-            qDebug() << "Here!";
             std::unordered_set<size_t> files;
             for (auto &pair : trigramsInFiles) {
                 if (context->stopFlag) {
-                    break;
+                    return {};
                 }
                 if (pair.first.substr(target)) {
                     files.insert(pair.second.begin(), pair.second.end());
@@ -152,22 +166,26 @@ public:
         }
         // TODO: Unicode selections
 
-        for (size_t i = 0; i < target.size() - 2; ++i) {
+        for (size_t i = 0; i < target.size() - 2 && !(context->stopFlag); ++i) {
             targetTrigrams.insert({&target.c_str()[i]});
+        }
+        if (context->stopFlag) {
+            return {};
         }
         if (trigramsInFiles.count(*targetTrigrams.begin()) == 0) {
             return {};
         }
-        std::list<size_t> neccesaryFiles;
-        for (size_t fileId : trigramsInFiles.at(*targetTrigrams.begin())) {
-            neccesaryFiles.push_back(fileId);
-        }
+        QSet<size_t> neccesaryFiles =
+            trigramsInFiles.at(*targetTrigrams.begin());
 
         for (Trigram const &trigram : targetTrigrams) {
-            if (trigramsInFiles.count(trigram) > 0 || context->stopFlag) {
-                mergeVectorToList(neccesaryFiles, trigramsInFiles.at(trigram));
-            } else {
+            if (context->stopFlag) {
                 return {};
+            }
+            if (trigramsInFiles.count(trigram) > 0) {
+                mergeUnorderedSets(neccesaryFiles, trigramsInFiles.at(trigram));
+            } else {
+                continue;
             }
         }
         std::vector<size_t> result;
@@ -182,35 +200,84 @@ public:
                                 std::string const &target,
                                 TaskContext<T, R> *context)
     {
+        //#ifdef PARALLEL_INDEX
         //#pragma omp parallel for
-        for (size_t fileId : fileIds) {
+        //#endif
+        for (size_t i = 0; i < fileIds.size(); ++i) {
             if (context->stopFlag) {
-                break;
+                continue;
             }
-            auto vec = findExactOccurrences(documents[fileId], target);
+            auto vec =
+                findExactOccurrences(documents[fileIds[i]], target, context);
             if (vec.size() > 0) {
-                SubstringOccurrence occurrence{documents[fileId].filename, vec};
+                SubstringOccurrence occurrence{documents[fileIds[i]].filename,
+                                               vec};
                 std::invoke(context->callOnSuccess, context->caller,
                             occurrence);
             }
         }
     }
+
+    template <typename T, typename R>
     static std::vector<size_t> findExactOccurrences(Document const &doc,
-                                                    std::string const &target);
-    static void mergeVectorToList(std::list<size_t> &destination,
-                                  std::vector<size_t> const &source);
+                                                    std::string const &target,
+                                                    TaskContext<T, R> *context)
+    {
+        QFile fileInstance(doc.filename);
+        fileInstance.open(QFile::ReadOnly);
+        size_t fileSize = static_cast<size_t>(fileInstance.size());
+        size_t blockSize = std::min(fileSize, static_cast<size_t>(BUF_SIZE));
+
+        std::vector<size_t> result;
+        auto time = std::chrono::steady_clock::now();
+        // TODO: square, slow
+        std::string buf(blockSize * 2, '\0');
+        fileInstance.read(&buf[0], blockSize);
+        fileSize -= blockSize;
+        for (size_t i = 0; i < blockSize - target.size() + 1; ++i) {
+            if (memcmp(&buf[i], &target[0], target.size()) == 0) {
+                result.push_back(i);
+            }
+        }
+        size_t passed = blockSize;
+        while (fileSize > 0 && !context->stopFlag) {
+            size_t receivedBytes =
+                fileInstance.read(&buf[blockSize], blockSize);
+            fileSize -= receivedBytes;
+            for (size_t i = blockSize - target.size() + 1;
+                 i < blockSize + receivedBytes - target.size(); ++i) {
+                if (memcmp(&buf[i], &target[0], target.size()) == 0) {
+                    result.push_back(i + passed - target.size());
+                }
+            }
+            passed += blockSize;
+            memcpy(&buf[0], &buf[blockSize], blockSize);
+        }
+        coutTime(time, "read");
+        fileInstance.close();
+        return result;
+    }
+
+    static void mergeUnorderedSets(QSet<size_t> &destination,
+                                   QSet<size_t> const &source);
     std::vector<SubstringOccurrence> findSubstring(QString const &);
+
+    void reprocessFile(QString const &filename);
+    const std::vector<Document> &getDocuments() const;
+
+    void flush();
 
 private:
     bool valid;
 
     void nothing();
+    static const qint32 BUF_SIZE = 1 << 20;
     void catchSubstring(SubstringOccurrence const &);
     // TODO: ifdef debug
     std::vector<SubstringOccurrence> storage;
     // TODO: put documents on disk
     std::vector<Document> documents;
-    std::unordered_map<Trigram, std::vector<size_t>, Trigram::TrigramHash>
+    std::unordered_map<Trigram, QSet<size_t>, Trigram::TrigramHash>
         trigramsInFiles;
 
     static void unwrapTrigrams(TrigramIndex::Document &document);
