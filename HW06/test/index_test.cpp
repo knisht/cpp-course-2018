@@ -154,7 +154,7 @@ TEST(correctness, overlapping_strings)
 
 TEST(correctness, time)
 {
-    std::string directory = "/home/knisht/repos";
+    std::string directory = "/home/knisht/repos/cpp-course-2018/HW06/bin";
     //    std::string directory = ".";
     //    fs::create_directories(directory);
     //    std::ofstream(directory + "/a") << "abacaba" << std::flush;

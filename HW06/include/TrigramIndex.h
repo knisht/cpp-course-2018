@@ -6,6 +6,7 @@
 #include <QDirIterator>
 #include <QEventLoop>
 #include <QString>
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -200,15 +201,15 @@ public:
                                 std::string const &target,
                                 TaskContext<T, R> *context)
     {
-        //#ifdef PARALLEL_INDEX
-        //#pragma omp parallel for
-        //#endif
+        std::boyer_moore_searcher processed_target(target.begin(),
+                                                   target.end());
         for (size_t i = 0; i < fileIds.size(); ++i) {
             if (context->stopFlag) {
                 continue;
             }
             auto vec =
-                findExactOccurrences(documents[fileIds[i]], target, context);
+                findExactOccurrences(documents[fileIds[i]], processed_target,
+                                     target.size(), context);
             if (vec.size() > 0) {
                 SubstringOccurrence occurrence{documents[fileIds[i]].filename,
                                                vec};
@@ -218,10 +219,11 @@ public:
         }
     }
 
-    template <typename T, typename R>
-    static std::vector<size_t> findExactOccurrences(Document const &doc,
-                                                    std::string const &target,
-                                                    TaskContext<T, R> *context)
+    template <typename T, typename R, typename Q>
+    static std::vector<size_t>
+    findExactOccurrences(Document const &doc,
+                         std::boyer_moore_searcher<Q> target,
+                         size_t target_size, TaskContext<T, R> *context)
     {
         QFile fileInstance(doc.filename);
         fileInstance.open(QFile::ReadOnly);
@@ -230,26 +232,47 @@ public:
 
         std::vector<size_t> result;
         auto time = std::chrono::steady_clock::now();
-        // TODO: square, slow
         std::string buf(blockSize * 2, '\0');
         fileInstance.read(&buf[0], blockSize);
         fileSize -= blockSize;
+#ifdef USE_BOYER_MOORE
+        std::string::iterator occurrencePosition =
+            std::search(buf.begin(), buf.end(), target);
+        while (occurrencePosition != buf.end()) {
+            result.push_back(occurrencePosition.base() - buf.begin().base());
+            occurrencePosition =
+                std::search(++occurrencePosition, buf.end(), target);
+        }
+#else
         for (size_t i = 0; i < blockSize - target.size() + 1; ++i) {
             if (memcmp(&buf[i], &target[0], target.size()) == 0) {
                 result.push_back(i);
             }
         }
+#endif
         size_t passed = blockSize;
         while (fileSize > 0 && !context->stopFlag) {
             size_t receivedBytes =
                 fileInstance.read(&buf[blockSize], blockSize);
             fileSize -= receivedBytes;
+
+#ifdef USE_BOYER_MOORE
+            occurrencePosition = std::search(
+                buf.begin() + blockSize - target_size, buf.end(), target);
+            while (occurrencePosition != buf.end()) {
+                result.push_back(passed + occurrencePosition.base() -
+                                 buf.begin().base() - target_size);
+                occurrencePosition =
+                    std::search(++occurrencePosition, buf.end(), target);
+            }
+#else
             for (size_t i = blockSize - target.size() + 1;
                  i < blockSize + receivedBytes - target.size(); ++i) {
                 if (memcmp(&buf[i], &target[0], target.size()) == 0) {
                     result.push_back(i + passed - target.size());
                 }
             }
+#endif
             passed += blockSize;
             memcpy(&buf[0], &buf[blockSize], blockSize);
         }
@@ -273,9 +296,8 @@ private:
     void nothing();
     static const qint32 BUF_SIZE = 1 << 20;
     void catchSubstring(SubstringOccurrence const &);
-    // TODO: ifdef debug
+    // TODO: ifdef test
     std::vector<SubstringOccurrence> storage;
-    // TODO: put documents on disk
     std::vector<Document> documents;
     std::unordered_map<Trigram, QSet<size_t>, Trigram::TrigramHash>
         trigramsInFiles;

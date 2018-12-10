@@ -54,7 +54,7 @@ TrigramIndex::findSubstring(QString const &target)
     return storage;
 }
 
-const qint32 BUF_SIZE = 1 << 20;
+const qint32 BUFFER_SIZE = 1 << 20;
 
 TrigramIndex::TrigramIndex() : valid(false) {}
 
@@ -68,7 +68,7 @@ void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
     if (fileSize <= 2) {
         return;
     }
-    qint32 block_size = qMin(fileSize, BUF_SIZE) + 1;
+    qint32 block_size = qMin(fileSize, BUFFER_SIZE) + 1;
     std::string bytes;
     bytes.resize(block_size, '\0');
     bytes.back() = '\1';
