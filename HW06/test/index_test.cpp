@@ -9,7 +9,7 @@
 
 #include <chrono>
 
-#include "include/TrigramIndex.h"
+#include "include/trigramindex.h"
 #include <QString>
 
 namespace fs = std::filesystem;

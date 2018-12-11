@@ -1,4 +1,4 @@
-#include "include/TrigramIndex.h"
+#include "include/trigramindex.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -36,6 +36,7 @@ void TrigramIndex::setUp(QString const &root)
 {
     // TODO: enrich args in templates
     // bare function for time measure, for example
+    // TODO: remove trigramInFiles and therefore increase speed
     TaskContext<TrigramIndex> context{false, this, &TrigramIndex::nothing};
     auto documents = getFileEntries(root, &context);
     calculateTrigrams(documents, &context);

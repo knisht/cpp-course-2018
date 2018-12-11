@@ -20,9 +20,9 @@ add_executable(index_test
     ${TEST_DIR}/gtest/gtest_main.cc
     ${TEST_DIR}/gtest/gtest-all.cc
     ${TEST_DIR}/index_test.cpp
-    ${INCLUDE_DIR}/TrigramIndex.h
+    ${INCLUDE_DIR}/trigramindex.h
     ${INCLUDE_DIR}/trigram.h
-    ${SOURCE_DIR}/TrigramIndex.cpp
+    ${SOURCE_DIR}/trigramindex.cpp
     ${SOURCE_DIR}/trigram.cpp
     )
 
@@ -31,8 +31,8 @@ add_executable(librarian
     ${SOURCE_DIR}/mainwindow.cpp
     ${INCLUDE_DIR}/mainwindow.h
     ${SOURCE_DIR}/mainwindow.ui
-    ${INCLUDE_DIR}/TrigramIndex.h
-    ${SOURCE_DIR}/TrigramIndex.cpp
+    ${INCLUDE_DIR}/trigramindex.h
+    ${SOURCE_DIR}/trigramindex.cpp
     ${SOURCE_DIR}/indexworker.cpp
     ${INCLUDE_DIR}/indexworker.h
     ${INCLUDE_DIR}/trigram.h

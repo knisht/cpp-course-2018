@@ -1,7 +1,7 @@
 #ifndef INDEXWORKER_H
 #define INDEXWORKER_H
 
-#include "TrigramIndex.h"
+#include "trigramindex.h"
 #include <QFileSystemWatcher>
 #include <QObject>
 
