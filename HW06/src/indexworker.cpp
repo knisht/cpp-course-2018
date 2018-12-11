@@ -22,6 +22,10 @@ void IndexWorker::processChangedFile(const QString &path)
 
 void IndexWorker::catchOccurrence(SubstringOccurrence const &occurrence)
 {
+    // TODO: make light occurrence;
+    SubstringOccurrence oc;
+    oc.filename = occurrence.filename;
+    oc.occurrences = {1};
     emit occurrenceFound(occurrence);
 }
 
@@ -29,10 +33,13 @@ void IndexWorker::findSubstring(QString const &substring)
 {
     context.stopFlag = false;
     senderContext.stopFlag = false;
+    working = true;
     emit startedFinding();
     qDebug() << substring << " <-- search";
     std::string stdTarget = substring.toStdString();
+    qDebug() << "in cand";
     auto fileIds = index.getCandidateFileIds(stdTarget, &context);
+    qDebug() << "out cand";
     if (fileIds.size() == 0) {
         emit finishedFinding("");
         return;
@@ -41,7 +48,9 @@ void IndexWorker::findSubstring(QString const &substring)
     emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
     // TODO: just first occurr is ok, exat places are matter only if user wants
     // them
+    qDebug() << "in occ";
     index.findOccurrencesInFiles(fileIds, stdTarget, &senderContext);
+    qDebug() << "out occ";
 
     if (context.stopFlag) {
         emit finishedFinding("interrupted");

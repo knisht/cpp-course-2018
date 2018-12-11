@@ -17,6 +17,7 @@ public:
 
     void increaseProgress();
     void catchOccurrence(SubstringOccurrence const &);
+    void setString(QString const &);
 
 signals:
     void startedIndexing();
@@ -37,6 +38,7 @@ private slots:
 private:
     TrigramIndex index;
     QDir currentDir;
+    bool working;
     QFileSystemWatcher watcher;
     TaskContext<IndexWorker> context;
     TaskContext<IndexWorker, const SubstringOccurrence &> senderContext;

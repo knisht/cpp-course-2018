@@ -205,7 +205,7 @@ public:
                                                    target.end());
         for (size_t i = 0; i < fileIds.size(); ++i) {
             if (context->stopFlag) {
-                continue;
+                return;
             }
             auto vec =
                 findExactOccurrences(documents[fileIds[i]], processed_target,
@@ -236,10 +236,25 @@ public:
         fileInstance.read(&buf[0], blockSize);
         fileSize -= blockSize;
 #ifdef USE_BOYER_MOORE
+        std::string::iterator lastOccurrencePosition = buf.begin();
         std::string::iterator occurrencePosition =
             std::search(buf.begin(), buf.end(), target);
+        size_t numchars = 0;
         while (occurrencePosition != buf.end()) {
-            result.push_back(occurrencePosition.base() - buf.begin().base());
+            if (context->stopFlag) {
+                return {};
+            }
+            for (; lastOccurrencePosition < occurrencePosition;
+                 ++lastOccurrencePosition) {
+                if (static_cast<unsigned int>(reinterpret_cast<unsigned char &>(
+                        *lastOccurrencePosition)) < 0x80 ||
+                    static_cast<unsigned int>(reinterpret_cast<unsigned char &>(
+                        *lastOccurrencePosition)) > 0xbf) {
+                    ++numchars;
+                }
+            }
+            std::cout << "graphemes: " << numchars << std::endl;
+            result.push_back(numchars);
             occurrencePosition =
                 std::search(++occurrencePosition, buf.end(), target);
         }
@@ -257,11 +272,22 @@ public:
             fileSize -= receivedBytes;
 
 #ifdef USE_BOYER_MOORE
+            lastOccurrencePosition = buf.begin() + blockSize - target_size;
             occurrencePosition = std::search(
                 buf.begin() + blockSize - target_size, buf.end(), target);
-            while (occurrencePosition != buf.end()) {
-                result.push_back(passed + occurrencePosition.base() -
-                                 buf.begin().base() - target_size);
+            while (occurrencePosition != buf.end() && !context->stopFlag) {
+                for (; lastOccurrencePosition < occurrencePosition;
+                     ++lastOccurrencePosition) {
+                    if (static_cast<unsigned int>(
+                            reinterpret_cast<unsigned char &>(
+                                *lastOccurrencePosition)) < 0x80 ||
+                        static_cast<unsigned int>(
+                            reinterpret_cast<unsigned char &>(
+                                *lastOccurrencePosition)) > 0xbf) {
+                        ++numchars;
+                    }
+                }
+                result.push_back(numchars);
                 occurrencePosition =
                     std::search(++occurrencePosition, buf.end(), target);
             }

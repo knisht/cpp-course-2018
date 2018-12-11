@@ -33,7 +33,7 @@ void resort(std::vector<SubstringOccurrence> &a,
          });
 }
 
-TEST(correctness, stable)
+TEST(correctness_index, stable)
 {
     std::string directory = "./tmp/";
     fs::create_directory(directory);
@@ -43,7 +43,7 @@ TEST(correctness, stable)
     fs::remove_all(directory);
 }
 
-TEST(correctness, basic_finding)
+TEST(correctness_index, basic_finding)
 {
     std::string directory = "./tmp";
     fs::create_directories(directory);
@@ -57,7 +57,7 @@ TEST(correctness, basic_finding)
     fs::remove_all(directory);
 }
 
-TEST(correctness, multiple_finding)
+TEST(correctness_index, multiple_finding)
 {
     std::string directory = "./tmp";
     fs::create_directories(directory);
@@ -75,7 +75,7 @@ TEST(correctness, multiple_finding)
     fs::remove_all(directory);
 }
 
-TEST(correctness, absence)
+TEST(correctness_index, absence)
 {
     std::string directory = "./tmp";
     fs::create_directories(directory);
@@ -92,7 +92,7 @@ TEST(correctness, absence)
     fs::remove_all(directory);
 }
 
-TEST(correctness, one_letter)
+TEST(correctness_index, one_letter)
 {
     std::string directory = "./tmp";
     fs::create_directories(directory);
@@ -110,7 +110,7 @@ TEST(correctness, one_letter)
     fs::remove_all(directory);
 }
 
-TEST(correctness, deep)
+TEST(correctness_index, deep)
 {
     std::string directory = "./tmp";
     fs::create_directories(directory);
@@ -133,7 +133,7 @@ TEST(correctness, deep)
     fs::remove_all(directory);
 }
 
-TEST(correctness, overlapping_strings)
+TEST(correctness_index, overlapping_strings)
 {
     std::string directory = "./tmp";
     fs::create_directories(directory);
@@ -148,6 +148,25 @@ TEST(correctness, overlapping_strings)
     std::vector<SubstringOccurrence> expected{{"./tmp/a", {0, 4}},
                                               {"./tmp/b", {5}}};
     resort(occurrences, expected);
+    ASSERT_EQ(expected, occurrences);
+    fs::remove_all(directory);
+}
+
+TEST(correctness_finding, russian)
+{
+    std::string directory = "./tmp";
+    fs::create_directories(directory);
+    std::string target = "Ехал Грека через реку, видит Грека - в реке рак";
+    std::ofstream(directory + "/a") << target << std::flush;
+    TrigramIndex index;
+    index.setUp(QString::fromStdString(directory));
+    //    index.setUp("./tmp");
+
+    std::vector<SubstringOccurrence> occurrences = index.findSubstring("Грека");
+
+    //    std::vector<SubstringOccurrence> expected{{"./tmp/a", {10, 4}}};
+    //    resort(occurrences, expected);
+    std::vector<SubstringOccurrence> expected{{"./tmp/a", {5, 29}}};
     ASSERT_EQ(expected, occurrences);
     fs::remove_all(directory);
 }
