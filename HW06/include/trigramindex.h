@@ -61,9 +61,16 @@ public:
 
 template <class Caller, typename... Arg>
 struct TaskContext {
-    bool stopFlag;
+    // Parent must support getTransactionalId
+    // TODO: private, caller initialization?
+    size_t transactionalId;
     Caller *caller;
     void (Caller::*callOnSuccess)(Arg...);
+
+    bool isTaskCancelled()
+    {
+        return caller->getTransactionalId() != transactionalId;
+    }
 };
 
 class TrigramIndex
@@ -73,6 +80,8 @@ public:
     std::vector<SubstringOccurrence> findSubstring(QString const &target) const;
     void printDocuments();
     void setUp(QString const &path);
+
+    size_t getTransactionalId();
 
     struct Document {
         QString filename;
@@ -90,7 +99,7 @@ public:
         QDirIterator dirIterator(root, QDir::NoFilter | QDir::Hidden,
                                  QDirIterator::Subdirectories);
         std::vector<TrigramIndex::Document> documents;
-        while (dirIterator.hasNext() && !context->stopFlag) {
+        while (dirIterator.hasNext() && !context->isTaskCancelled()) {
             dirIterator.next();
             if (dirIterator.fileInfo().isDir()) {
                 continue;
@@ -110,7 +119,7 @@ public:
 #pragma omp parallel for
 #endif
         for (size_t i = 0; i < documents.size(); ++i) {
-            if (context->stopFlag) {
+            if (context->isTaskCancelled()) {
                 continue;
             }
             unwrapTrigrams(documents[i]);
@@ -136,7 +145,7 @@ public:
         start = std::chrono::steady_clock::now();
         QSet<size_t> set;
         for (size_t i = 0; i < this->documents.size(); ++i) {
-            if (context->stopFlag) {
+            if (context->isTaskCancelled()) {
                 return;
             }
             for (auto &&it : this->documents[i].trigramOccurrences) {
@@ -154,7 +163,7 @@ public:
         if (target.size() < 3) {
             std::unordered_set<size_t> files;
             for (auto &pair : trigramsInFiles) {
-                if (context->stopFlag) {
+                if (context->isTaskCancelled()) {
                     return {};
                 }
                 if (pair.first.substr(target)) {
@@ -162,31 +171,34 @@ public:
                 }
             }
             std::vector<size_t> result;
-            result.insert(result.end(), files.begin(), files.end());
+            result.reserve(result.size() + files.size());
+            for (auto &&it : files) {
+                if (context->isTaskCancelled()) {
+                    return {};
+                } else {
+                    result.push_back(it);
+                }
+            }
             return result;
         }
-        // TODO: Unicode selections
 
-        for (size_t i = 0; i < target.size() - 2 && !(context->stopFlag); ++i) {
+        for (size_t i = 0;
+             i < target.size() - 2 && !(context->isTaskCancelled()); ++i) {
             targetTrigrams.insert({&target.c_str()[i]});
         }
-        if (context->stopFlag) {
-            return {};
-        }
-        if (trigramsInFiles.count(*targetTrigrams.begin()) == 0) {
+        if (trigramsInFiles.count(*targetTrigrams.begin()) == 0 ||
+            context->isTaskCancelled()) {
             return {};
         }
         QSet<size_t> neccesaryFiles =
             trigramsInFiles.at(*targetTrigrams.begin());
 
         for (Trigram const &trigram : targetTrigrams) {
-            if (context->stopFlag) {
+            if (context->isTaskCancelled()) {
                 return {};
             }
             if (trigramsInFiles.count(trigram) > 0) {
                 mergeUnorderedSets(neccesaryFiles, trigramsInFiles.at(trigram));
-            } else {
-                continue;
             }
         }
         std::vector<size_t> result;
@@ -197,26 +209,29 @@ public:
     }
 
     template <typename T, typename R>
-    void findOccurrencesInFiles(std::vector<size_t> fileIds,
-                                std::string const &target,
-                                TaskContext<T, R> *context)
+    std::vector<SubstringOccurrence>
+    findOccurrencesInFiles(std::vector<size_t> fileIds,
+                           std::string const &target,
+                           TaskContext<T, R> *context)
     {
         std::boyer_moore_searcher processed_target(target.begin(),
                                                    target.end());
+        std::vector<SubstringOccurrence> result;
         for (size_t i = 0; i < fileIds.size(); ++i) {
-            if (context->stopFlag) {
-                return;
+            if (context->isTaskCancelled()) {
+                return {};
             }
             auto vec =
                 findExactOccurrences(documents[fileIds[i]], processed_target,
                                      target.size(), context);
             if (vec.size() > 0) {
-                SubstringOccurrence occurrence{documents[fileIds[i]].filename,
-                                               vec};
-                std::invoke(context->callOnSuccess, context->caller,
-                            occurrence);
+                result.push_back({documents[fileIds[i]].filename, vec});
+                //                std::invoke(context->callOnSuccess,
+                //                context->caller,
+                //                            occurrence);
             }
         }
+        return result;
     }
 
     template <typename T, typename R, typename Q>
@@ -240,7 +255,7 @@ public:
             std::search(buf.begin(), buf.begin() + blockSize, target);
         size_t numchars = 0;
         while (occurrencePosition != buf.begin() + blockSize) {
-            if (context->stopFlag) {
+            if (context->isTaskCancelled()) {
                 return {};
             }
             for (; lastOccurrencePosition < occurrencePosition;
@@ -267,7 +282,7 @@ public:
         }
         size_t passed = blockSize;
 
-        while (fileSize > 0 && !context->stopFlag) {
+        while (fileSize > 0 && !context->isTaskCancelled()) {
             size_t receivedBytes =
                 fileInstance.read(&buf[blockSize], blockSize);
             fileSize -= receivedBytes;
@@ -275,7 +290,8 @@ public:
             lastOccurrencePosition = buf.begin() + blockSize - target_size;
             occurrencePosition = std::search(
                 buf.begin() + blockSize - target_size, buf.end(), target);
-            while (occurrencePosition != buf.end() && !context->stopFlag) {
+            while (occurrencePosition != buf.end() &&
+                   !context->isTaskCancelled()) {
                 for (; lastOccurrencePosition < occurrencePosition;
                      ++lastOccurrencePosition) {
                     if (static_cast<unsigned int>(

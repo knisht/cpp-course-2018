@@ -32,12 +32,15 @@ void TrigramIndex::coutTime(decltype(std::chrono::steady_clock::now()) start,
     std::cout << msg << ": " << duration.count() << std::endl;
 }
 
+size_t TrigramIndex::getTransactionalId() { return 0; }
+
 void TrigramIndex::setUp(QString const &root)
 {
     // TODO: enrich args in templates
     // bare function for time measure, for example
     // TODO: remove trigramInFiles and therefore increase speed
-    TaskContext<TrigramIndex> context{false, this, &TrigramIndex::nothing};
+    // TODO: lock for incrementing transactionalId
+    TaskContext<TrigramIndex> context{0, this, &TrigramIndex::nothing};
     auto documents = getFileEntries(root, &context);
     calculateTrigrams(documents, &context);
     setUpDocuments(documents, &context);
@@ -121,14 +124,15 @@ void TrigramIndex::mergeUnorderedSets(QSet<size_t> &destination,
                                       QSet<size_t> const &source)
 {
     std::vector<size_t> fileIds;
-    for (size_t fileId : destination) {
-        if (source.contains(fileId) == 0) {
-            fileIds.push_back(fileId);
-        }
-    }
-    for (size_t fileId : fileIds) {
-        destination.remove(fileId);
-    }
+    destination.intersect(source);
+    //    for (size_t fileId : destination) {
+    //        if (source.contains(fileId) == 0) {
+    //            fileIds.push_back(fileId);
+    //        }
+    //    }
+    //    for (size_t fileId : fileIds) {
+    //        destination.remove(fileId);
+    //    }
 }
 
 void TrigramIndex::reprocessFile(QString const &filename)

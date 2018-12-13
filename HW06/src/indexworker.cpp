@@ -4,12 +4,6 @@
 
 IndexWorker::IndexWorker(QObject *parent) : QObject(parent), index()
 {
-    context.stopFlag = false;
-    context.caller = this;
-    context.callOnSuccess = &IndexWorker::increaseProgress;
-    senderContext.stopFlag = false;
-    senderContext.caller = this;
-    senderContext.callOnSuccess = &IndexWorker::catchOccurrence;
     connect(&watcher, SIGNAL(fileChanged(const QString &)), this,
             SLOT(processChangedFile(const QString &)));
     connect(this, SIGNAL(testSignal()), this, SLOT(testSlot()));
@@ -26,20 +20,19 @@ void IndexWorker::catchOccurrence(SubstringOccurrence const &occurrence)
     // TODO: make light occurrence;
     SubstringOccurrence oc;
     oc.filename = occurrence.filename;
-    oc.occurrences = {1};
     emit occurrenceFound(occurrence);
 }
 
 void IndexWorker::findSubstring(QString const &substring)
 {
-    context.stopFlag = false;
-    senderContext.stopFlag = false;
-    working = true;
-    TaskContext<IndexWorker> context{false, this,
-                                     &IndexWorker::increaseProgress};
+    size_t validTransactionalId = ++transactionalId;
+    TaskContext<IndexWorker, const SubstringOccurrence &> senderContext{
+        validTransactionalId, this, &IndexWorker::catchOccurrence};
+    TaskContext<IndexWorker> currentContext{validTransactionalId, this,
+                                            &IndexWorker::increaseProgress};
     emit startedFinding();
     std::string stdTarget = substring.toStdString();
-    auto fileIds = index.getCandidateFileIds(stdTarget, &context);
+    auto fileIds = index.getCandidateFileIds(stdTarget, &currentContext);
     if (fileIds.size() == 0) {
         emit finishedFinding("");
         return;
@@ -47,9 +40,16 @@ void IndexWorker::findSubstring(QString const &substring)
     emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
     // TODO: just first occurr is ok, exat places are matter only if user wants
     // them
-    index.findOccurrencesInFiles(fileIds, stdTarget, &senderContext);
+    std::vector<SubstringOccurrence> occs =
+        index.findOccurrencesInFiles(fileIds, stdTarget, &senderContext);
+    for (auto &&occ : occs) {
+        if (currentContext.isTaskCancelled()) {
+            return;
+        }
+        emit catchOccurrence(occ);
+    }
 
-    if (context.stopFlag) {
+    if (currentContext.isTaskCancelled()) {
         emit finishedFinding("interrupted");
     } else {
         emit finishedFinding("");
@@ -62,33 +62,35 @@ void IndexWorker::testSlot() { qDebug() << "test slot agred!"; }
 
 void IndexWorker::indexate(QString const &path)
 {
-
+    ++transactionalId;
+    TaskContext<IndexWorker> currentContext{transactionalId, this,
+                                            &IndexWorker::increaseProgress};
     // TODO: push watcher to taskContext
     for (auto document : index.getDocuments()) {
         watcher.removePath(document.filename);
     }
     index.flush();
     currentDir = path;
-    context.stopFlag = false;
     emit startedIndexing();
-    auto documents = TrigramIndex::getFileEntries(path, &context);
+    auto documents = TrigramIndex::getFileEntries(path, &currentContext);
     emit determinedFilesAmount(static_cast<long long>(documents.size()) * 2);
-    TrigramIndex::calculateTrigrams(documents, &context);
-    index.setUpDocuments(documents, &context);
+    TrigramIndex::calculateTrigrams(documents, &currentContext);
+    index.setUpDocuments(documents, &currentContext);
     for (auto document : index.getDocuments()) {
         watcher.addPath(document.filename);
     }
-    if (context.stopFlag) {
+    if (currentContext.isTaskCancelled()) {
         emit finishedIndexing("interrupted");
     } else {
         emit finishedIndexing("");
     }
 }
 
+size_t IndexWorker::getTransactionalId() { return transactionalId; }
+
 void IndexWorker::interrupt()
 {
     qDebug() << "interrupting...";
-    context.stopFlag = true;
+    ++transactionalId;
     emit testSignal();
-    senderContext.stopFlag = true;
 }

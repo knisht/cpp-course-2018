@@ -18,6 +18,7 @@ public:
     void increaseProgress();
     void catchOccurrence(SubstringOccurrence const &);
     void setString(QString const &);
+    size_t getTransactionalId();
 
 signals:
     void startedIndexing();
@@ -41,9 +42,8 @@ private:
     TrigramIndex index;
     QDir currentDir;
     bool working;
+    std::atomic_size_t transactionalId;
     QFileSystemWatcher watcher;
-    TaskContext<IndexWorker> context;
-    TaskContext<IndexWorker, const SubstringOccurrence &> senderContext;
 };
 
 #endif // INDEXWORKER_H
