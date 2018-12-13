@@ -30,7 +30,6 @@ MainWindow::MainWindow(QWidget *parent)
             SLOT(setProgressBarLimit(qint64)));
     connect(&worker, SIGNAL(progressChanged(qint64)), this,
             SLOT(changeProgressBarValue(qint64)));
-
     thread.start();
     defaultCursor = ui->filesContent->textCursor();
     ui->filesContent->setCursorWidth(0);
@@ -67,7 +66,7 @@ void MainWindow::renderText()
     ui->filesContent->document()->setPlainText(file.readAll());
     file.close();
     QTextCharFormat fmt;
-    fmt.setBackground(QColor{200, 100, 100, 220});
+    fmt.setBackground(QColor{200, 100, 100, 255});
     ui->filesContent->textCursor().clearSelection();
     for (auto &&it : currentOccurrences) {
         // TODO: make hashmap
@@ -158,6 +157,7 @@ void MainWindow::previousOccurrence()
 
 MainWindow::~MainWindow()
 {
+    stopActions();
     thread.quit();
     thread.exit();
     delete ui;
@@ -194,7 +194,14 @@ void MainWindow::onFinishedFinding(QString const &result)
 
 void MainWindow::getOccurrence(SubstringOccurrence const &oc)
 {
-    ui->progressBar->setValue(ui->progressBar->value() + 1);
+    //    if (currentOccurrences.size() % 100 == 0) {
+    //        ui->progressBar->setValue(ui->progressBar->value() + 100);
+    //    }
+    //    if (currentOccurrences.size() == ui->progressBar->maximum()) {
+    //        ui->progressBar->setValue(ui->progressBar->maximum());
+    //    }
+    //    NOTE: better to keep above lines commented, otherwise program
+    //    performance is much slower
     currentOccurrences.push_back(oc);
     ui->filesWidget->addItem(oc.filename);
     if (oc.filename == curFileName) {

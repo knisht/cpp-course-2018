@@ -28,8 +28,8 @@ void IndexWorker::findSubstring(QString const &substring)
     size_t validTransactionalId = ++transactionalId;
     TaskContext<IndexWorker, const SubstringOccurrence &> senderContext{
         validTransactionalId, this, &IndexWorker::catchOccurrence};
-    TaskContext<IndexWorker> currentContext{validTransactionalId, this,
-                                            &IndexWorker::increaseProgress};
+    TaskContext<IndexWorker, qsizetype> currentContext{
+        validTransactionalId, this, &IndexWorker::increaseProgress};
     emit startedFinding();
     std::string stdTarget = substring.toStdString();
     auto fileIds = index.getCandidateFileIds(stdTarget, &currentContext);
@@ -56,15 +56,18 @@ void IndexWorker::findSubstring(QString const &substring)
     }
 }
 
-void IndexWorker::increaseProgress() { emit progressChanged(1); }
+void IndexWorker::increaseProgress(qsizetype delta)
+{
+    emit progressChanged(delta);
+}
 
 void IndexWorker::testSlot() { qDebug() << "test slot agred!"; }
 
 void IndexWorker::indexate(QString const &path)
 {
     ++transactionalId;
-    TaskContext<IndexWorker> currentContext{transactionalId, this,
-                                            &IndexWorker::increaseProgress};
+    TaskContext<IndexWorker, qsizetype> currentContext{
+        transactionalId, this, &IndexWorker::increaseProgress};
     // TODO: push watcher to taskContext
     for (auto document : index.getDocuments()) {
         watcher.removePath(document.filename);

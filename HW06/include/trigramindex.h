@@ -93,8 +93,8 @@ public:
     };
 
     template <typename T>
-    static std::vector<Document> getFileEntries(QString const &root,
-                                                TaskContext<T> *context)
+    static std::vector<Document>
+    getFileEntries(QString const &root, TaskContext<T, qsizetype> *context)
     {
         QDirIterator dirIterator(root, QDir::NoFilter | QDir::Hidden,
                                  QDirIterator::Subdirectories);
@@ -112,7 +112,7 @@ public:
 
     template <typename T>
     static void calculateTrigrams(std::vector<Document> &documents,
-                                  TaskContext<T> *context)
+                                  TaskContext<T, qsizetype> *context)
     {
 
 #ifdef PARALLEL_INDEX
@@ -123,7 +123,7 @@ public:
                 continue;
             }
             unwrapTrigrams(documents[i]);
-            std::invoke(context->callOnSuccess, context->caller);
+            std::invoke(context->callOnSuccess, context->caller, 1);
         }
     }
 
@@ -132,14 +132,14 @@ public:
 
     template <typename T>
     void setUpDocuments(std::vector<Document> &documents,
-                        TaskContext<T> *context)
+                        TaskContext<T, qsizetype> *context)
     {
         auto start = std::chrono::steady_clock::now();
         for (size_t i = 0; i < documents.size(); ++i) {
             if (documents[i].trigramOccurrences.size() > 0) {
                 this->documents.push_back(std::move(documents[i]));
             } else {
-                std::invoke(context->callOnSuccess, context->caller);
+                std::invoke(context->callOnSuccess, context->caller, 1);
             }
         }
         start = std::chrono::steady_clock::now();
@@ -151,13 +151,13 @@ public:
             for (auto &&it : this->documents[i].trigramOccurrences) {
                 this->trigramsInFiles[it].insert(i);
             }
-            std::invoke(context->callOnSuccess, context->caller);
+            std::invoke(context->callOnSuccess, context->caller, 1);
         }
     }
 
     template <typename T>
     std::vector<size_t> getCandidateFileIds(std::string const &target,
-                                            TaskContext<T> *context)
+                                            TaskContext<T, qsizetype> *context)
     {
         std::unordered_set<Trigram, Trigram::TrigramHash> targetTrigrams;
         if (target.size() < 3) {
@@ -336,7 +336,7 @@ public:
 private:
     bool valid;
 
-    void nothing();
+    void nothing(qsizetype);
     static const qint32 BUF_SIZE = 1 << 20;
     void catchSubstring(SubstringOccurrence const &);
     // TODO: ifdef test

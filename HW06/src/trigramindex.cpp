@@ -17,7 +17,7 @@ void TrigramIndex::printDocuments()
     }
 }
 
-void TrigramIndex::nothing() {}
+void TrigramIndex::nothing(qsizetype) {}
 
 void TrigramIndex::catchSubstring(SubstringOccurrence const &substring)
 {
@@ -36,11 +36,10 @@ size_t TrigramIndex::getTransactionalId() { return 0; }
 
 void TrigramIndex::setUp(QString const &root)
 {
-    // TODO: enrich args in templates
     // bare function for time measure, for example
     // TODO: remove trigramInFiles and therefore increase speed
-    // TODO: lock for incrementing transactionalId
-    TaskContext<TrigramIndex> context{0, this, &TrigramIndex::nothing};
+    TaskContext<TrigramIndex, qsizetype> context{0, this,
+                                                 &TrigramIndex::nothing};
     auto documents = getFileEntries(root, &context);
     calculateTrigrams(documents, &context);
     setUpDocuments(documents, &context);
@@ -52,7 +51,8 @@ TrigramIndex::findSubstring(QString const &target)
     storage.clear();
     TaskContext<TrigramIndex, const SubstringOccurrence &> context{
         false, this, &TrigramIndex::catchSubstring};
-    TaskContext<TrigramIndex> usualContext{false, this, &TrigramIndex::nothing};
+    TaskContext<TrigramIndex, qsizetype> usualContext{false, this,
+                                                      &TrigramIndex::nothing};
     auto files = getCandidateFileIds(target.toStdString(), &usualContext);
     findOccurrencesInFiles(files, target.toStdString(), &context);
     return storage;

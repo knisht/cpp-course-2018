@@ -15,7 +15,7 @@ public:
 
     void interrupt();
 
-    void increaseProgress();
+    void increaseProgress(qsizetype);
     void catchOccurrence(SubstringOccurrence const &);
     void setString(QString const &);
     size_t getTransactionalId();
