@@ -34,6 +34,7 @@ MainWindow::MainWindow(QWidget *parent)
     thread.start();
     defaultCursor = ui->filesContent->textCursor();
     ui->filesContent->setCursorWidth(0);
+    ui->filesContent->setAcceptRichText(false);
     emit indexate(".");
     qDebug() << "thread start";
 }
@@ -62,7 +63,8 @@ void MainWindow::renderText()
     file.open(QFile::ReadOnly);
     ui->filesContent->clear();
     ui->filesContent->setTextCursor(defaultCursor);
-    ui->filesContent->setText(file.readAll());
+    //    ui->filesContent->setText(file.readAll());
+    ui->filesContent->document()->setPlainText(file.readAll());
     file.close();
     QTextCharFormat fmt;
     fmt.setBackground(QColor{200, 100, 100, 220});

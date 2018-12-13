@@ -12,6 +12,7 @@ IndexWorker::IndexWorker(QObject *parent) : QObject(parent), index()
     senderContext.callOnSuccess = &IndexWorker::catchOccurrence;
     connect(&watcher, SIGNAL(fileChanged(const QString &)), this,
             SLOT(processChangedFile(const QString &)));
+    connect(this, SIGNAL(testSignal()), this, SLOT(testSlot()));
 }
 
 void IndexWorker::processChangedFile(const QString &path)
@@ -34,23 +35,19 @@ void IndexWorker::findSubstring(QString const &substring)
     context.stopFlag = false;
     senderContext.stopFlag = false;
     working = true;
+    TaskContext<IndexWorker> context{false, this,
+                                     &IndexWorker::increaseProgress};
     emit startedFinding();
-    qDebug() << substring << " <-- search";
     std::string stdTarget = substring.toStdString();
-    qDebug() << "in cand";
     auto fileIds = index.getCandidateFileIds(stdTarget, &context);
-    qDebug() << "out cand";
     if (fileIds.size() == 0) {
         emit finishedFinding("");
         return;
     }
-    qDebug() << "found ids!";
     emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
     // TODO: just first occurr is ok, exat places are matter only if user wants
     // them
-    qDebug() << "in occ";
     index.findOccurrencesInFiles(fileIds, stdTarget, &senderContext);
-    qDebug() << "out occ";
 
     if (context.stopFlag) {
         emit finishedFinding("interrupted");
@@ -60,6 +57,8 @@ void IndexWorker::findSubstring(QString const &substring)
 }
 
 void IndexWorker::increaseProgress() { emit progressChanged(1); }
+
+void IndexWorker::testSlot() { qDebug() << "test slot agred!"; }
 
 void IndexWorker::indexate(QString const &path)
 {
@@ -72,16 +71,13 @@ void IndexWorker::indexate(QString const &path)
     currentDir = path;
     context.stopFlag = false;
     emit startedIndexing();
-    qDebug() << "index started";
     auto documents = TrigramIndex::getFileEntries(path, &context);
     emit determinedFilesAmount(static_cast<long long>(documents.size()) * 2);
-    qDebug() << documents.size();
     TrigramIndex::calculateTrigrams(documents, &context);
     index.setUpDocuments(documents, &context);
     for (auto document : index.getDocuments()) {
         watcher.addPath(document.filename);
     }
-    qDebug() << "indexing ended";
     if (context.stopFlag) {
         emit finishedIndexing("interrupted");
     } else {
@@ -93,5 +89,6 @@ void IndexWorker::interrupt()
 {
     qDebug() << "interrupting...";
     context.stopFlag = true;
+    emit testSignal();
     senderContext.stopFlag = true;
 }

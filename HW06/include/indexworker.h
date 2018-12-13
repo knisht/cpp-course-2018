@@ -27,6 +27,7 @@ signals:
     void occurrenceFound(SubstringOccurrence const &);
     void determinedFilesAmount(qint64 filesAmount);
     void progressChanged(qint64 amount);
+    void testSignal();
 
 public slots:
     void indexate(QString const &path);
@@ -34,6 +35,7 @@ public slots:
 
 private slots:
     void processChangedFile(const QString &);
+    void testSlot();
 
 private:
     TrigramIndex index;

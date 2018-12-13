@@ -235,12 +235,11 @@ public:
         std::string buf(blockSize * 2, '\0');
         fileInstance.read(&buf[0], blockSize);
         fileSize -= blockSize;
-#ifdef USE_BOYER_MOORE
         std::string::iterator lastOccurrencePosition = buf.begin();
         std::string::iterator occurrencePosition =
-            std::search(buf.begin(), buf.end(), target);
+            std::search(buf.begin(), buf.begin() + blockSize, target);
         size_t numchars = 0;
-        while (occurrencePosition != buf.end()) {
+        while (occurrencePosition != buf.begin() + blockSize) {
             if (context->stopFlag) {
                 return {};
             }
@@ -253,25 +252,26 @@ public:
                     ++numchars;
                 }
             }
-            std::cout << "graphemes: " << numchars << std::endl;
             result.push_back(numchars);
-            occurrencePosition =
-                std::search(++occurrencePosition, buf.end(), target);
+            occurrencePosition = std::search(++occurrencePosition,
+                                             buf.begin() + blockSize, target);
         }
-#else
-        for (size_t i = 0; i < blockSize - target.size() + 1; ++i) {
-            if (memcmp(&buf[i], &target[0], target.size()) == 0) {
-                result.push_back(i);
+        for (; lastOccurrencePosition < occurrencePosition - target_size;
+             ++lastOccurrencePosition) {
+            if (static_cast<unsigned int>(reinterpret_cast<unsigned char &>(
+                    *lastOccurrencePosition)) < 0x80 ||
+                static_cast<unsigned int>(reinterpret_cast<unsigned char &>(
+                    *lastOccurrencePosition)) > 0xbf) {
+                ++numchars;
             }
         }
-#endif
         size_t passed = blockSize;
+
         while (fileSize > 0 && !context->stopFlag) {
             size_t receivedBytes =
                 fileInstance.read(&buf[blockSize], blockSize);
             fileSize -= receivedBytes;
 
-#ifdef USE_BOYER_MOORE
             lastOccurrencePosition = buf.begin() + blockSize - target_size;
             occurrencePosition = std::search(
                 buf.begin() + blockSize - target_size, buf.end(), target);
@@ -291,18 +291,19 @@ public:
                 occurrencePosition =
                     std::search(++occurrencePosition, buf.end(), target);
             }
-#else
-            for (size_t i = blockSize - target.size() + 1;
-                 i < blockSize + receivedBytes - target.size(); ++i) {
-                if (memcmp(&buf[i], &target[0], target.size()) == 0) {
-                    result.push_back(i + passed - target.size());
+
+            for (; lastOccurrencePosition < occurrencePosition - target_size;
+                 ++lastOccurrencePosition) {
+                if (static_cast<unsigned int>(reinterpret_cast<unsigned char &>(
+                        *lastOccurrencePosition)) < 0x80 ||
+                    static_cast<unsigned int>(reinterpret_cast<unsigned char &>(
+                        *lastOccurrencePosition)) > 0xbf) {
+                    ++numchars;
                 }
             }
-#endif
             passed += blockSize;
             memcpy(&buf[0], &buf[blockSize], blockSize);
         }
-        coutTime(time, "read");
         fileInstance.close();
         return result;
     }
