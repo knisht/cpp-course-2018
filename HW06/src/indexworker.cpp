@@ -1,5 +1,6 @@
 #include "include/indexworker.h"
 #include <QDebug>
+#include <QElapsedTimer>
 #include <unordered_set>
 
 IndexWorker::IndexWorker(QObject *parent) : QObject(parent), index()
@@ -8,19 +9,17 @@ IndexWorker::IndexWorker(QObject *parent) : QObject(parent), index()
             SLOT(processChangedFile(const QString &)));
     connect(&watcher, SIGNAL(directoryChanged(const QString &)), this,
             SLOT(processChangedDirectory(const QString &)));
-    connect(this, SIGNAL(testSignal()), this, SLOT(testSlot()));
 }
 
 void IndexWorker::processChangedFile(const QString &path)
 {
-    qDebug() << "File proc:" << path;
     index.reprocessFile(path);
     // TODO: emit render text
 }
 
 void IndexWorker::processChangedDirectory(const QString &path)
 {
-    qDebug() << "Directory proc:" << path;
+    qInfo() << "Directory changes detected in" << path;
     auto vec = index.reprocessDirectory(path);
     for (auto filename : vec) {
         watcher.addPath(filename);
@@ -45,6 +44,8 @@ void IndexWorker::findSubstring(QString const &substring)
         validTransactionalId, this, &IndexWorker::increaseProgress};
     emit startedFinding();
     std::string stdTarget = substring.toStdString();
+    QElapsedTimer timer;
+    timer.start();
     auto fileIds = index.getCandidateFileIds(stdTarget, &currentContext);
     if (fileIds.size() == 0) {
         emit finishedFinding("");
@@ -55,6 +56,8 @@ void IndexWorker::findSubstring(QString const &substring)
     // them
     std::vector<SubstringOccurrence> occs =
         index.findOccurrencesInFiles(fileIds, stdTarget, &senderContext);
+    qInfo() << "Finding of" << substring << "finished in" << timer.elapsed()
+            << "ms";
     for (auto &&occ : occs) {
         if (currentContext.isTaskCancelled()) {
             return;
@@ -79,8 +82,6 @@ void IndexWorker::watchDirectory(QString const &directory)
     watcher.addPath(directory);
 }
 
-void IndexWorker::testSlot() { qDebug() << "test slot agred!"; }
-
 void IndexWorker::indexate(QString const &path)
 {
     size_t validTransactionalId = ++transactionalId;
@@ -92,6 +93,8 @@ void IndexWorker::indexate(QString const &path)
     index.flush();
     currentDir = path;
     emit startedIndexing();
+    QElapsedTimer timer;
+    timer.start();
     auto documents =
         TrigramIndex::getFileEntries(path, &currentContext, &directoryContext);
     emit determinedFilesAmount(static_cast<long long>(documents.size()) * 2);
@@ -99,7 +102,10 @@ void IndexWorker::indexate(QString const &path)
     index.setUpDocuments(documents, &currentContext);
     for (auto document : index.getDocuments()) {
         watcher.addPath(document.filename);
+        emit progressChanged(1);
     }
+    qInfo() << "Indexing of" << path << "finished in" << timer.elapsed()
+            << "ms";
     if (currentContext.isTaskCancelled()) {
         emit finishedIndexing("interrupted");
     } else {
@@ -109,9 +115,4 @@ void IndexWorker::indexate(QString const &path)
 
 size_t IndexWorker::getTransactionalId() { return transactionalId; }
 
-void IndexWorker::interrupt()
-{
-    qDebug() << "interrupting...";
-    ++transactionalId;
-    emit testSignal();
-}
+void IndexWorker::interrupt() { ++transactionalId; }

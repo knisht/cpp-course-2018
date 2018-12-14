@@ -149,18 +149,9 @@ void TrigramIndex::reprocessFile(QString const &filename)
         if (documents[i].filename == filename) {
             qDebug() << "I'M REPROCESSING!!" << documents[i].filename << "with"
                      << documents[i].trigramOccurrences.size();
-            for (Trigram const &trigram : documents[i].trigramOccurrences) {
-                trigramsInFiles[trigram].remove(i);
-                qDebug() << "in loop23";
-            }
             documents[i].trigramOccurrences.clear();
             unwrapTrigrams(documents[i]);
             qDebug() << "now i'll do" << documents[i].trigramOccurrences.size();
-            for (Trigram const &trigram : documents[i].trigramOccurrences) {
-                trigramsInFiles[trigram].insert(i);
-                qDebug() << "in loop24"
-                         << QString::fromStdString(trigram.toString());
-            }
             return;
         }
     }
@@ -195,21 +186,12 @@ std::vector<QString> TrigramIndex::reprocessDirectory(QString const &filename)
         this->documents.push_back(documents[docId]);
         unwrapTrigrams(this->documents[this->documents.size() - 1]);
         qDebug() << "in loop2";
-        for (const Trigram &trigram :
-             this->documents.back().trigramOccurrences) {
-            qDebug() << "in loop1";
-            this->trigramsInFiles[trigram].insert(this->documents.size() - 1);
-        }
         changedFiles.push_back(documents[docId].filename);
     }
     return changedFiles;
 }
 
-void TrigramIndex::flush()
-{
-    documents.clear();
-    trigramsInFiles.clear();
-}
+void TrigramIndex::flush() { documents.clear(); }
 
 const std::vector<TrigramIndex::Document> &TrigramIndex::getDocuments() const
 {

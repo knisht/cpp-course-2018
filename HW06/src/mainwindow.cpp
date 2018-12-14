@@ -35,14 +35,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->filesContent->setCursorWidth(0);
     ui->filesContent->setAcceptRichText(false);
     emit indexate(".");
-    qDebug() << "thread start";
+    qInfo() << "Thread started";
 }
 
 void MainWindow::findSubstring()
 {
     stopActions();
     QString content = ui->stringInput->toPlainText();
-    qDebug() << content;
     if (content.size() == 0) {
         return;
     }
@@ -50,7 +49,6 @@ void MainWindow::findSubstring()
     ui->filesWidget->clear();
     emit findSubstring(content);
     wordSize = static_cast<size_t>(content.size());
-    // TODO: no files message
 }
 
 void MainWindow::renderText()
@@ -62,7 +60,6 @@ void MainWindow::renderText()
     file.open(QFile::ReadOnly);
     ui->filesContent->clear();
     ui->filesContent->setTextCursor(defaultCursor);
-    //    ui->filesContent->setText(file.readAll());
     ui->filesContent->document()->setPlainText(file.readAll());
     file.close();
     QTextCharFormat fmt;
@@ -88,7 +85,7 @@ void MainWindow::renderText()
 
 void MainWindow::getFileContent(QListWidgetItem *item)
 {
-    qDebug() << item->text();
+    qInfo() << "Opening" << item->text();
     curFileName = item->text();
     ui->currentFileLabel->setText("Opened file: " +
                                   QFileInfo(curFileName).fileName());
@@ -225,7 +222,6 @@ void MainWindow::changeProgressBarValue(qint64 delta)
 
 void MainWindow::stopActions()
 {
-    qInfo() << "Cancelling thread";
     worker.interrupt();
     thread.start();
 }

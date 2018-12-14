@@ -153,10 +153,6 @@ public:
             if (context->isTaskCancelled()) {
                 return;
             }
-            for (auto &&it : this->documents[i].trigramOccurrences) {
-                this->trigramsInFiles[it].insert(i);
-            }
-            std::invoke(context->callOnSuccess, context->caller, 1);
         }
     }
 
@@ -167,21 +163,22 @@ public:
         std::unordered_set<Trigram, Trigram::TrigramHash> targetTrigrams;
         if (target.size() < 3) {
             std::unordered_set<size_t> files;
-            for (auto &pair : trigramsInFiles) {
-                if (context->isTaskCancelled()) {
-                    return {};
-                }
-                if (pair.first.substr(target)) {
-                    files.insert(pair.second.begin(), pair.second.end());
-                }
-            }
+            //            for (auto &pair : trigramsInFiles) {
+            //                if (context->isTaskCancelled()) {
+            //                    return {};
+            //                }
+            //                if (pair.first.substr(target)) {
+            //                    files.insert(pair.second.begin(),
+            //                    pair.second.end());
+            //                }
+            //            }
             std::vector<size_t> result;
             result.reserve(result.size() + files.size());
-            for (auto &&it : files) {
+            for (size_t i = 0; i < documents.size(); ++i) {
                 if (context->isTaskCancelled()) {
                     return {};
                 } else {
-                    result.push_back(it);
+                    result.push_back(i);
                 }
             }
             return result;
@@ -191,25 +188,36 @@ public:
              i < target.size() - 2 && !(context->isTaskCancelled()); ++i) {
             targetTrigrams.insert({&target.c_str()[i]});
         }
-        if (trigramsInFiles.count(*targetTrigrams.begin()) == 0 ||
-            context->isTaskCancelled()) {
-            return {};
-        }
-        QSet<size_t> neccesaryFiles =
-            trigramsInFiles.at(*targetTrigrams.begin());
+        //        QSet<size_t> neccesaryFiles;
 
-        for (Trigram const &trigram : targetTrigrams) {
-            if (context->isTaskCancelled()) {
-                return {};
-            }
-            if (trigramsInFiles.count(trigram) > 0) {
-                mergeUnorderedSets(neccesaryFiles, trigramsInFiles.at(trigram));
-            }
-        }
         std::vector<size_t> result;
-        for (auto &&it : neccesaryFiles) {
-            result.push_back(it);
+        for (size_t i = 0; i < documents.size(); ++i) {
+            bool containsAll = true;
+            for (Trigram const &trigram : targetTrigrams) {
+                containsAll &=
+                    (documents[i].trigramOccurrences.count(trigram) != 0);
+                if (!containsAll) {
+                    break;
+                }
+            }
+            if (containsAll) {
+                result.push_back(i);
+            }
         }
+
+        //        for (size_t)
+        //            for (Trigram const &trigram : targetTrigrams) {
+        //                if (context->isTaskCancelled()) {
+        //                    return {};
+        //                }
+        //                if (trigramsInFiles.count(trigram) > 0) {
+        //                    mergeUnorderedSets(neccesaryFiles,
+        //                                       trigramsInFiles.at(trigram));
+        //                }
+        //            }
+        //        for (auto &&it : neccesaryFiles) {
+        //            result.push_back(it);
+        //        }
         return result;
     }
 
@@ -352,8 +360,6 @@ private:
     // TODO: ifdef test
     std::vector<SubstringOccurrence> storage;
     std::vector<Document> documents;
-    std::unordered_map<Trigram, QSet<size_t>, Trigram::TrigramHash>
-        trigramsInFiles;
 
     static void unwrapTrigrams(TrigramIndex::Document &document);
 };
