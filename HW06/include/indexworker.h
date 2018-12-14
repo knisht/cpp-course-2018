@@ -11,6 +11,8 @@ class IndexWorker : public QObject
 public:
     explicit IndexWorker(QObject *parent = nullptr);
 
+    IndexWorker(IndexWorker const &) = delete;
+    IndexWorker &operator=(IndexWorker const &) = delete;
     void setUpIndex(QString const &root);
 
     void interrupt();
@@ -40,8 +42,6 @@ private slots:
 
 private:
     TrigramIndex index;
-    QDir currentDir;
-    bool working;
     std::atomic_size_t transactionalId;
     QFileSystemWatcher watcher;
 };

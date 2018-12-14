@@ -159,6 +159,9 @@
         <property name="spacing">
          <number>0</number>
         </property>
+        <property name="sizeConstraint">
+         <enum>QLayout::SetMinimumSize</enum>
+        </property>
         <item>
          <widget class="QTextEdit" name="stringInput">
           <property name="maximumSize">

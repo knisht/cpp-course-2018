@@ -41,7 +41,9 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::findSubstring()
 {
     stopActions();
+    // TODO: Maybe QByteArray will be better for unicode?
     QString content = ui->stringInput->toPlainText();
+
     if (content.size() == 0) {
         return;
     }
@@ -114,15 +116,18 @@ void MainWindow::nextOccurrence()
     if (cursor.occurrenceIndex == -1) {
         cursor.occurrenceIndex = 0;
     } else {
-        cursor.occurrenceIndex =
-            (cursor.occurrenceIndex + 1) % cursor.document->occurrences.size();
+        cursor.occurrenceIndex = static_cast<qsizetype>(
+            static_cast<size_t>(cursor.occurrenceIndex + 1) %
+            cursor.document->occurrences.size());
     }
     QTextCursor textCursor(ui->filesContent->textCursor());
     textCursor.setPosition(
-        static_cast<int>(cursor.document->occurrences[cursor.occurrenceIndex]),
+        static_cast<int>(cursor.document->occurrences[static_cast<size_t>(
+            cursor.occurrenceIndex)]),
         QTextCursor::MoveAnchor);
     textCursor.setPosition(
-        static_cast<int>(cursor.document->occurrences[cursor.occurrenceIndex] +
+        static_cast<int>(cursor.document->occurrences[static_cast<size_t>(
+                             cursor.occurrenceIndex)] +
                          wordSize),
         QTextCursor::KeepAnchor);
     ui->filesContent->setTextCursor(textCursor);
@@ -137,16 +142,19 @@ void MainWindow::previousOccurrence()
     if (cursor.occurrenceIndex == -1) {
         cursor.occurrenceIndex = 0;
     } else {
-        cursor.occurrenceIndex =
-            (cursor.occurrenceIndex + cursor.document->occurrences.size() - 1) %
-            cursor.document->occurrences.size();
+        cursor.occurrenceIndex = static_cast<qsizetype>(
+            (static_cast<size_t>(cursor.occurrenceIndex) +
+             cursor.document->occurrences.size() - 1) %
+            cursor.document->occurrences.size());
     }
     QTextCursor textCursor(ui->filesContent->document());
     textCursor.setPosition(
-        static_cast<int>(cursor.document->occurrences[cursor.occurrenceIndex]),
+        static_cast<int>(cursor.document->occurrences[static_cast<size_t>(
+            cursor.occurrenceIndex)]),
         QTextCursor::MoveAnchor);
     textCursor.setPosition(
-        static_cast<int>(cursor.document->occurrences[cursor.occurrenceIndex] +
+        static_cast<int>(cursor.document->occurrences[static_cast<size_t>(
+                             cursor.occurrenceIndex)] +
                          wordSize),
         QTextCursor::KeepAnchor);
     ui->filesContent->setTextCursor(textCursor);
@@ -169,6 +177,7 @@ void MainWindow::onFinishedIndexing(QString const &result)
 {
     if (result == "") {
         ui->statusbar->showMessage("Indexing finished successfully");
+        ui->progressBar->setValue(ui->progressBar->maximum());
     } else {
         ui->statusbar->showMessage("Indexing failed: " + result);
     }
@@ -211,13 +220,14 @@ void MainWindow::getOccurrence(SubstringOccurrence const &oc)
 void MainWindow::setProgressBarLimit(qint64 limit)
 {
     ui->progressBar->setMinimum(0);
-    ui->progressBar->setMaximum(limit);
+    ui->progressBar->setMaximum(static_cast<int>(limit));
     ui->progressBar->setValue(0);
 }
 
 void MainWindow::changeProgressBarValue(qint64 delta)
 {
-    ui->progressBar->setValue(ui->progressBar->value() + delta);
+    ui->progressBar->setValue(
+        static_cast<int>(ui->progressBar->value() + delta));
 }
 
 void MainWindow::stopActions()

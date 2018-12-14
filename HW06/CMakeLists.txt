@@ -22,21 +22,29 @@ add_executable(index_test
     ${TEST_DIR}/index_test.cpp
     ${INCLUDE_DIR}/trigramindex.h
     ${INCLUDE_DIR}/trigram.h
+    ${INCLUDE_DIR}/substringoccurrence.h
+    ${INCLUDE_DIR}/document.h
+    ${INCLUDE_DIR}/taskcontext.h
     ${SOURCE_DIR}/trigramindex.cpp
+    ${SOURCE_DIR}/document.cpp
     ${SOURCE_DIR}/trigram.cpp
     )
 
 add_executable(librarian
-    ${SOURCE_DIR}/main.cpp
-    ${SOURCE_DIR}/mainwindow.cpp
     ${INCLUDE_DIR}/mainwindow.h
-    ${SOURCE_DIR}/mainwindow.ui
+    ${INCLUDE_DIR}/substringoccurrence.h
+    ${INCLUDE_DIR}/document.h
     ${INCLUDE_DIR}/trigramindex.h
-    ${SOURCE_DIR}/trigramindex.cpp
-    ${SOURCE_DIR}/indexworker.cpp
     ${INCLUDE_DIR}/indexworker.h
     ${INCLUDE_DIR}/trigram.h
+    ${INCLUDE_DIR}/taskcontext.h
     ${SOURCE_DIR}/trigram.cpp
+    ${SOURCE_DIR}/document.cpp
+    ${SOURCE_DIR}/main.cpp
+    ${SOURCE_DIR}/mainwindow.cpp
+    ${SOURCE_DIR}/trigramindex.cpp
+    ${SOURCE_DIR}/indexworker.cpp
+    ${SOURCE_DIR}/mainwindow.ui
     )
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)

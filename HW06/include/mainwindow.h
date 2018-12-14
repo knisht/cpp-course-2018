@@ -45,7 +45,7 @@ signals:
 
 private:
     struct CursorPosition {
-        int occurrenceIndex;
+        qsizetype occurrenceIndex;
         SubstringOccurrence *document;
     } cursor;
 

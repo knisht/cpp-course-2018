@@ -14,7 +14,6 @@ IndexWorker::IndexWorker(QObject *parent) : QObject(parent), index()
 void IndexWorker::processChangedFile(const QString &path)
 {
     index.reprocessFile(path);
-    // TODO: emit render text
 }
 
 void IndexWorker::processChangedDirectory(const QString &path)
@@ -24,47 +23,40 @@ void IndexWorker::processChangedDirectory(const QString &path)
     for (auto filename : vec) {
         watcher.addPath(filename);
     }
-    // TODO: emit render text
 }
 
 void IndexWorker::catchOccurrence(SubstringOccurrence const &occurrence)
 {
     // TODO: make light occurrence;
-    SubstringOccurrence oc;
-    oc.filename = occurrence.filename;
     emit occurrenceFound(occurrence);
 }
 
 void IndexWorker::findSubstring(QString const &substring)
 {
     size_t validTransactionalId = ++transactionalId;
-    TaskContext<IndexWorker, const SubstringOccurrence &> senderContext{
-        validTransactionalId, this, &IndexWorker::catchOccurrence};
     TaskContext<IndexWorker, qsizetype> currentContext{
         validTransactionalId, this, &IndexWorker::increaseProgress};
     emit startedFinding();
     std::string stdTarget = substring.toStdString();
     QElapsedTimer timer;
     timer.start();
-    auto fileIds = index.getCandidateFileIds(stdTarget, &currentContext);
+    std::vector<size_t> fileIds =
+        index.getCandidateFileIds(stdTarget, currentContext);
     if (fileIds.size() == 0) {
         emit finishedFinding("");
         return;
     }
     emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
-    // TODO: just first occurr is ok, exat places are matter only if user wants
-    // them
-    std::vector<SubstringOccurrence> occs =
-        index.findOccurrencesInFiles(fileIds, stdTarget, &senderContext);
+    std::vector<SubstringOccurrence> substringPositions =
+        index.findOccurrencesInFiles(fileIds, stdTarget, currentContext);
     qInfo() << "Finding of" << substring << "finished in" << timer.elapsed()
             << "ms";
-    for (auto &&occ : occs) {
+    for (SubstringOccurrence &occ : substringPositions) {
         if (currentContext.isTaskCancelled()) {
             return;
         }
         emit catchOccurrence(occ);
     }
-
     if (currentContext.isTaskCancelled()) {
         emit finishedFinding("interrupted");
     } else {
@@ -91,18 +83,17 @@ void IndexWorker::indexate(QString const &path)
         validTransactionalId, this, &IndexWorker::watchDirectory};
     watcher.addPath(path);
     index.flush();
-    currentDir = path;
     emit startedIndexing();
     QElapsedTimer timer;
     timer.start();
-    auto documents =
-        TrigramIndex::getFileEntries(path, &currentContext, &directoryContext);
+    std::vector<Document> documents =
+        TrigramIndex::getFileEntries(path, directoryContext);
     emit determinedFilesAmount(static_cast<long long>(documents.size()) * 2);
-    TrigramIndex::calculateTrigrams(documents, &currentContext);
-    index.setUpDocuments(documents, &currentContext);
-    for (auto document : index.getDocuments()) {
+    TrigramIndex::calculateTrigrams(documents, currentContext);
+    index.setUpDocuments(documents, currentContext);
+    for (Document const &document : index.getDocuments()) {
         watcher.addPath(document.filename);
-        emit progressChanged(1);
+        emit increaseProgress(1);
     }
     qInfo() << "Indexing of" << path << "finished in" << timer.elapsed()
             << "ms";
