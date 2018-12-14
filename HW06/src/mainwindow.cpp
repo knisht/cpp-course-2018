@@ -57,6 +57,7 @@ void MainWindow::renderText()
     if (curFileName == "") {
         return;
     }
+    //    QDir(currentDir).absoluteFilePath(curFileName);
     QFile file(curFileName);
     file.open(QFile::ReadOnly);
     ui->filesContent->clear();
@@ -87,7 +88,8 @@ void MainWindow::renderText()
 void MainWindow::getFileContent(QListWidgetItem *item)
 {
     qInfo() << "Opening" << item->text();
-    curFileName = item->text();
+
+    curFileName = QDir(currentDir).absoluteFilePath(item->text());
     ui->currentFileLabel->setText("Opened file: " +
                                   QFileInfo(curFileName).fileName());
     renderText();
@@ -208,7 +210,7 @@ void MainWindow::getOccurrence(SubstringOccurrence const &oc)
     //    NOTE: better to keep above lines commented, otherwise program
     //    performance is much slower
     currentOccurrences.push_back(oc);
-    ui->filesWidget->addItem(oc.filename);
+    ui->filesWidget->addItem(QDir(currentDir).relativeFilePath(oc.filename));
     if (oc.filename == curFileName) {
         if (QFileInfo(curFileName).size() < 3000000) {
             renderText();
