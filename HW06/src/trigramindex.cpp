@@ -66,7 +66,6 @@ TrigramIndex::TrigramIndex() : valid(false) {}
 void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
 {
     QFile fileInstance{QFileInfo(document.filename).absoluteFilePath()};
-    //    fileInstance.flush();
     std::ifstream ifs(document.filename.toStdString());
     // TODO: make error notifying
     if (!fileInstance.open(QFile::ReadOnly)) {
@@ -109,17 +108,17 @@ void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
         }
 #ifdef PARALLEL_INDEX
 //#pragma omp parallel for
-// NOTE: strange things occurs if upper string is uncommented
+// NOTE: strange things occurs if above string is uncommented
 #endif
         for (size_t i = 0; i < receivedBytes - 2; ++i) {
             size_t trigram_code =
-                static_cast<size_t>(reinterpret_cast<unsigned char &>(bytes[i])
-                                    << 16) +
                 static_cast<size_t>(
-                    reinterpret_cast<unsigned char &>(bytes[i + 1]) << 8) +
-                static_cast<size_t>(bytes[i + 2]);
-            //            std::cout << Trigram(trigram_code).toString() <<
-            //            std::endl;
+                    reinterpret_cast<unsigned char const &>(bytes[i]) << 16) +
+                static_cast<size_t>(
+                    reinterpret_cast<unsigned char const &>(bytes[i + 1])
+                    << 8) +
+                static_cast<size_t>(
+                    reinterpret_cast<unsigned char const &>(bytes[i + 2]));
             document.trigramOccurrences.insert(trigram_code);
         }
         if (document.trigramOccurrences.size() > 200000) {

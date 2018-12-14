@@ -26,9 +26,12 @@ size_t Trigram::code() const { return trigram_code; }
 
 size_t Trigram::encode(const char *target) const
 {
-    return static_cast<size_t>(target[0] << 16) +
-           (static_cast<size_t>(target[1]) << 8) +
-           (static_cast<size_t>(target[2]));
+    return (static_cast<size_t>(
+                reinterpret_cast<unsigned char const &>(target[0]) << 16) +
+            static_cast<size_t>(
+                reinterpret_cast<unsigned char const &>(target[1]) << 8) +
+            static_cast<size_t>(
+                reinterpret_cast<unsigned char const &>(target[2])));
 }
 
 bool Trigram::substr(std::string const &target) const
@@ -37,7 +40,10 @@ bool Trigram::substr(std::string const &target) const
         return false;
     }
     if (target.size() == 2) {
-        size_t target_code = static_cast<size_t>((target[0] << 8) + target[1]);
+        size_t target_code =
+            static_cast<size_t>(
+                reinterpret_cast<unsigned char const &>(target[0]) << 8) +
+            static_cast<size_t>(target[1]);
         if (target_code == (trigram_code & ((1 << 16) - 1)) ||
             target_code == ((trigram_code >> 8) & ((1 << 16) - 1))) {
             return true;
