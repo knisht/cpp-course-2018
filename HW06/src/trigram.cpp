@@ -1,4 +1,5 @@
 #include "include/trigram.h"
+#include <iostream>
 
 Trigram::Trigram(char *c_str) : trigram_code(encode(c_str)) {}
 
@@ -37,14 +38,19 @@ bool Trigram::substr(std::string const &target) const
     }
     if (target.size() == 2) {
         size_t target_code = static_cast<size_t>((target[0] << 8) + target[1]);
-        if (target_code == (trigram_code & ((1 << 16) - 1))) {
+        if (target_code == (trigram_code & ((1 << 16) - 1)) ||
+            target_code == ((trigram_code >> 8) & ((1 << 16) - 1))) {
             return true;
         } else {
             return false;
         }
     } else {
         return static_cast<size_t>(target[0]) ==
-               (trigram_code & ((1 << 8) - 1));
+                   (trigram_code & ((1 << 8) - 1)) ||
+               static_cast<size_t>(target[0]) ==
+                   ((trigram_code >> 8) & ((1 << 8) - 1)) ||
+               static_cast<size_t>(target[0]) ==
+                   ((trigram_code >> 16) & ((1 << 8) - 1));
     }
 }
 

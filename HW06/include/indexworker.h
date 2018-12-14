@@ -16,6 +16,7 @@ public:
     void interrupt();
 
     void increaseProgress(qsizetype);
+    void watchDirectory(QString const &directory);
     void catchOccurrence(SubstringOccurrence const &);
     void setString(QString const &);
     size_t getTransactionalId();
@@ -36,6 +37,7 @@ public slots:
 
 private slots:
     void processChangedFile(const QString &);
+    void processChangedDirectory(const QString &);
     void testSlot();
 
 private:

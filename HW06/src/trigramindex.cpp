@@ -4,6 +4,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <algorithm>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <unordered_set>
@@ -16,8 +17,6 @@ void TrigramIndex::printDocuments()
         std::cout << it.filename.toStdString() << std::endl;
     }
 }
-
-void TrigramIndex::nothing(qsizetype) {}
 
 void TrigramIndex::catchSubstring(SubstringOccurrence const &substring)
 {
@@ -38,9 +37,11 @@ void TrigramIndex::setUp(QString const &root)
 {
     // bare function for time measure, for example
     // TODO: remove trigramInFiles and therefore increase speed
-    TaskContext<TrigramIndex, qsizetype> context{0, this,
-                                                 &TrigramIndex::nothing};
-    auto documents = getFileEntries(root, &context);
+    TaskContext<TrigramIndex, qsizetype> context{
+        0, this, &TrigramIndex::nothing<qsizetype>};
+    TaskContext<TrigramIndex, QString const &> dirContext{
+        0, this, &TrigramIndex::nothing<QString const &>};
+    auto documents = getFileEntries(root, &context, &dirContext);
     calculateTrigrams(documents, &context);
     setUpDocuments(documents, &context);
 }
@@ -64,22 +65,29 @@ TrigramIndex::TrigramIndex() : valid(false) {}
 
 void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
 {
-    QFile fileInstance{document.filename};
+    QFile fileInstance{QFileInfo(document.filename).absoluteFilePath()};
+    //    fileInstance.flush();
+    std::ifstream ifs(document.filename.toStdString());
     // TODO: make error notifying
-    fileInstance.open(QFile::ReadOnly);
-    qint32 fileSize = static_cast<qint32>(fileInstance.size());
+    if (!fileInstance.open(QFile::ReadOnly)) {
+        qWarning() << "Could not open" << document.filename
+                   << "| Reindex recommended";
+        return;
+    }
+    qint32 fileSize = static_cast<qint32>(QFileInfo(document.filename).size());
+
     // NOTE: files with filesize <= 2 are ignored
     if (fileSize <= 2) {
         return;
     }
-    qint32 block_size = qMin(fileSize, BUFFER_SIZE) + 1;
+    qint32 block_size = qMin(fileSize, BUFFER_SIZE);
     std::string bytes;
-    bytes.resize(block_size, '\0');
+    bytes.resize(block_size + 1, '\0');
     bytes.back() = '\1';
     char last[3];
     int passed = 0;
 
-    auto start = std::chrono::steady_clock::now();
+    //    auto start = std::chrono::steady_clock::now();
     while (fileSize > 0) {
         size_t receivedBytes = fileInstance.read(&bytes[0], block_size);
         bool has_zero = (strlen(&bytes[0]) < block_size);
@@ -90,6 +98,7 @@ void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
         }
         if (has_zero) {
             document.trigramOccurrences.clear();
+            fileInstance.close();
             return;
         }
         if (passed > 0) {
@@ -99,16 +108,23 @@ void TrigramIndex::unwrapTrigrams(TrigramIndex::Document &document)
             document.trigramOccurrences.insert({trigramBuf});
         }
 #ifdef PARALLEL_INDEX
-#pragma omp parallel for
+//#pragma omp parallel for
+// NOTE: strange things occurs if upper string is uncommented
 #endif
         for (size_t i = 0; i < receivedBytes - 2; ++i) {
-            size_t trigram_code = static_cast<size_t>(bytes[i] << 16) +
-                                  static_cast<size_t>(bytes[i + 1] << 8) +
-                                  static_cast<size_t>(bytes[i + 2]);
+            size_t trigram_code =
+                static_cast<size_t>(reinterpret_cast<unsigned char &>(bytes[i])
+                                    << 16) +
+                static_cast<size_t>(
+                    reinterpret_cast<unsigned char &>(bytes[i + 1]) << 8) +
+                static_cast<size_t>(bytes[i + 2]);
+            //            std::cout << Trigram(trigram_code).toString() <<
+            //            std::endl;
             document.trigramOccurrences.insert(trigram_code);
         }
         if (document.trigramOccurrences.size() > 200000) {
             document.trigramOccurrences.clear();
+            fileInstance.close();
             return;
         }
         last[0] = bytes[block_size - 2];
@@ -125,37 +141,69 @@ void TrigramIndex::mergeUnorderedSets(QSet<size_t> &destination,
 {
     std::vector<size_t> fileIds;
     destination.intersect(source);
-    //    for (size_t fileId : destination) {
-    //        if (source.contains(fileId) == 0) {
-    //            fileIds.push_back(fileId);
-    //        }
-    //    }
-    //    for (size_t fileId : fileIds) {
-    //        destination.remove(fileId);
-    //    }
 }
 
 void TrigramIndex::reprocessFile(QString const &filename)
 {
+    qDebug() << "catch up" << filename;
     for (size_t i = 0; i < documents.size(); ++i) {
         if (documents[i].filename == filename) {
-            qDebug() << "I'M REPROCESSING!!" << documents[i].filename;
+            qDebug() << "I'M REPROCESSING!!" << documents[i].filename << "with"
+                     << documents[i].trigramOccurrences.size();
             for (Trigram const &trigram : documents[i].trigramOccurrences) {
                 trigramsInFiles[trigram].remove(i);
+                qDebug() << "in loop23";
             }
+            documents[i].trigramOccurrences.clear();
             unwrapTrigrams(documents[i]);
+            qDebug() << "now i'll do" << documents[i].trigramOccurrences.size();
             for (Trigram const &trigram : documents[i].trigramOccurrences) {
                 trigramsInFiles[trigram].insert(i);
+                qDebug() << "in loop24"
+                         << QString::fromStdString(trigram.toString());
             }
             return;
         }
     }
-    // so new file added
-    documents.push_back(Document{filename});
-    unwrapTrigrams(documents.back());
-    for (Trigram const &trigram : documents.back().trigramOccurrences) {
-        trigramsInFiles[trigram].insert(documents.size() - 1);
+}
+
+std::vector<QString> TrigramIndex::reprocessDirectory(QString const &filename)
+{
+    QDirIterator dirIterator(filename, QDir::NoFilter | QDir::Hidden |
+                                           QDir::NoDotAndDotDot |
+                                           QDir::NoDotDot);
+    // TODO: unordered map
+    std::vector<TrigramIndex::Document> documents;
+    while (dirIterator.hasNext()) {
+        dirIterator.next();
+        if (!dirIterator.fileInfo().isDir()) {
+            documents.push_back(TrigramIndex::Document(
+                QFile(dirIterator.filePath()).fileName()));
+        }
     }
+    std::vector<size_t> realDocuments;
+    for (size_t i = 0; i < documents.size(); ++i) {
+        realDocuments.push_back(i);
+        for (size_t j = 0; j < this->documents.size(); ++j) {
+            if (documents[i].filename == this->documents[j].filename) {
+                realDocuments.pop_back();
+            }
+        }
+    }
+    qDebug() << realDocuments.size();
+    std::vector<QString> changedFiles;
+    for (size_t docId : realDocuments) {
+        this->documents.push_back(documents[docId]);
+        unwrapTrigrams(this->documents[this->documents.size() - 1]);
+        qDebug() << "in loop2";
+        for (const Trigram &trigram :
+             this->documents.back().trigramOccurrences) {
+            qDebug() << "in loop1";
+            this->trigramsInFiles[trigram].insert(this->documents.size() - 1);
+        }
+        changedFiles.push_back(documents[docId].filename);
+    }
+    return changedFiles;
 }
 
 void TrigramIndex::flush()

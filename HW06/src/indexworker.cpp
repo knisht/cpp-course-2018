@@ -6,12 +6,25 @@ IndexWorker::IndexWorker(QObject *parent) : QObject(parent), index()
 {
     connect(&watcher, SIGNAL(fileChanged(const QString &)), this,
             SLOT(processChangedFile(const QString &)));
+    connect(&watcher, SIGNAL(directoryChanged(const QString &)), this,
+            SLOT(processChangedDirectory(const QString &)));
     connect(this, SIGNAL(testSignal()), this, SLOT(testSlot()));
 }
 
 void IndexWorker::processChangedFile(const QString &path)
 {
+    qDebug() << "File proc:" << path;
     index.reprocessFile(path);
+    // TODO: emit render text
+}
+
+void IndexWorker::processChangedDirectory(const QString &path)
+{
+    qDebug() << "Directory proc:" << path;
+    auto vec = index.reprocessDirectory(path);
+    for (auto filename : vec) {
+        watcher.addPath(filename);
+    }
     // TODO: emit render text
 }
 
@@ -61,21 +74,26 @@ void IndexWorker::increaseProgress(qsizetype delta)
     emit progressChanged(delta);
 }
 
+void IndexWorker::watchDirectory(QString const &directory)
+{
+    watcher.addPath(directory);
+}
+
 void IndexWorker::testSlot() { qDebug() << "test slot agred!"; }
 
 void IndexWorker::indexate(QString const &path)
 {
-    ++transactionalId;
+    size_t validTransactionalId = ++transactionalId;
     TaskContext<IndexWorker, qsizetype> currentContext{
-        transactionalId, this, &IndexWorker::increaseProgress};
-    // TODO: push watcher to taskContext
-    for (auto document : index.getDocuments()) {
-        watcher.removePath(document.filename);
-    }
+        validTransactionalId, this, &IndexWorker::increaseProgress};
+    TaskContext<IndexWorker, QString const &> directoryContext{
+        validTransactionalId, this, &IndexWorker::watchDirectory};
+    watcher.addPath(path);
     index.flush();
     currentDir = path;
     emit startedIndexing();
-    auto documents = TrigramIndex::getFileEntries(path, &currentContext);
+    auto documents =
+        TrigramIndex::getFileEntries(path, &currentContext, &directoryContext);
     emit determinedFilesAmount(static_cast<long long>(documents.size()) * 2);
     TrigramIndex::calculateTrigrams(documents, &currentContext);
     index.setUpDocuments(documents, &currentContext);

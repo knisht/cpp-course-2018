@@ -94,18 +94,23 @@ public:
 
     template <typename T>
     static std::vector<Document>
-    getFileEntries(QString const &root, TaskContext<T, qsizetype> *context)
+    getFileEntries(QString const &root, TaskContext<T, qsizetype> *context,
+                   TaskContext<T, QString const &> *directoryHandler)
     {
-        QDirIterator dirIterator(root, QDir::NoFilter | QDir::Hidden,
+        QDirIterator dirIterator(root,
+                                 QDir::NoFilter | QDir::Hidden |
+                                     QDir::NoDotAndDotDot | QDir::NoDotDot,
                                  QDirIterator::Subdirectories);
         std::vector<TrigramIndex::Document> documents;
         while (dirIterator.hasNext() && !context->isTaskCancelled()) {
             dirIterator.next();
             if (dirIterator.fileInfo().isDir()) {
-                continue;
+                std::invoke(directoryHandler->callOnSuccess,
+                            directoryHandler->caller, dirIterator.filePath());
+            } else {
+                documents.push_back(TrigramIndex::Document(
+                    QFileInfo(dirIterator.filePath()).absoluteFilePath()));
             }
-            documents.push_back(TrigramIndex::Document(
-                QFile(dirIterator.filePath()).fileName()));
         }
         return documents;
     }
@@ -329,6 +334,7 @@ public:
     std::vector<SubstringOccurrence> findSubstring(QString const &);
 
     void reprocessFile(QString const &filename);
+    std::vector<QString> reprocessDirectory(QString const &dirname);
     const std::vector<Document> &getDocuments() const;
 
     void flush();
@@ -336,7 +342,11 @@ public:
 private:
     bool valid;
 
-    void nothing(qsizetype);
+    template <typename T>
+    void nothing(T)
+    {
+    }
+
     static const qint32 BUF_SIZE = 1 << 20;
     void catchSubstring(SubstringOccurrence const &);
     // TODO: ifdef test
