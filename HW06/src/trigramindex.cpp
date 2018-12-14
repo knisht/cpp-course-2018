@@ -10,6 +10,8 @@
 #include <unordered_set>
 #include <utility>
 
+static const qint32 BUFF_SIZE = 1 << 20;
+
 void TrigramIndex::printDocuments()
 {
     std::cout << "Files at all: " << documents.size() << std::endl;
@@ -35,7 +37,7 @@ void TrigramIndex::unwrapTrigrams(Document &document)
     if (fileSize <= 2) {
         return;
     }
-    size_t block_size = static_cast<size_t>(qMin(fileSize, BUF_SIZE));
+    size_t block_size = static_cast<size_t>(qMin(fileSize, BUFF_SIZE));
     std::string bytes;
     bytes.resize(static_cast<size_t>(block_size + 1), '\0');
     bytes.back() = '\1';

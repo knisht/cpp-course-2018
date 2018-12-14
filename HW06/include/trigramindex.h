@@ -217,6 +217,7 @@ public:
                 for (; lastOccurrencePosition < occurrencePosition;
                      ++lastOccurrencePosition) {
                     if (is_unicode_independent(*lastOccurrencePosition)) {
+                        ++numchars;
                     }
                 }
                 result.push_back(numchars);
