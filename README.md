@@ -22,3 +22,7 @@ Also provided library with algorithms for compressing and decompressing any stre
 ## 5. GUI tool for detecting equal files in your filesystem.  
   This quite useful tool can pretty-print your directory content and suggest you to remove duplicates.  
 Written with Qt framework.
+
+## 6. Librarian - tool for searching string in text files
+  Librarian is what you need if you don't like command-line tools like grep. It can index your filesystem and rapidly find all files that contain your desired string.  
+Written with Qt(5.11) framework.
