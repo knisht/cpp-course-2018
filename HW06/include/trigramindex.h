@@ -23,14 +23,13 @@ public:
     std::vector<QString> reprocessDirectory(QString const &dirname);
     const std::vector<Document> &getDocuments() const;
     void printDocuments();
-    //    std::vector<SubstringOccurrence> findSubstring(QString const &);
     void flush();
 
     template <typename Owner>
     void setUp(QString const &root, TaskContext<Owner, qsizetype> &usualContext,
                TaskContext<Owner, QString const &> &dirContext)
     {
-        // bare function for testing
+        // just function for testing
         auto documents = getFileEntries(root, dirContext);
         calculateTrigrams(documents, usualContext);
         setUpDocuments(documents, usualContext);

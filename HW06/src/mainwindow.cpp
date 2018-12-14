@@ -41,7 +41,6 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::findSubstring()
 {
     stopActions();
-    // TODO: Maybe QByteArray will be better for unicode?
     QString content = ui->stringInput->toPlainText();
 
     if (content.size() == 0) {
