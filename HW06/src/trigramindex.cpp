@@ -111,28 +111,33 @@ std::vector<QString> TrigramIndex::reprocessDirectory(QString const &filename)
                                            QDir::NoDotAndDotDot |
                                            QDir::NoDotDot);
     std::vector<Document> documents;
+    std::vector<QString> changedFiles;
     while (dirIterator.hasNext()) {
         dirIterator.next();
         if (!dirIterator.fileInfo().isDir()) {
             documents.push_back(
                 Document(QFile(dirIterator.filePath()).fileName()));
+        } else {
+            changedFiles.push_back(
+                QFileInfo(dirIterator.filePath()).absoluteFilePath());
         }
     }
     std::vector<size_t> realDocuments;
     for (size_t i = 0; i < documents.size(); ++i) {
         realDocuments.push_back(i);
         for (size_t j = 0; j < this->documents.size(); ++j) {
-            if (documents[i].filename == this->documents[j].filename) {
+            if (QFileInfo(documents[i].filename).absoluteFilePath() ==
+                this->documents[j].filename) {
                 realDocuments.pop_back();
             }
         }
     }
-    qDebug() << realDocuments.size();
-    std::vector<QString> changedFiles;
     for (size_t docId : realDocuments) {
-        this->documents.push_back(documents[docId]);
-        unwrapTrigrams(this->documents[this->documents.size() - 1]);
-        changedFiles.push_back(documents[docId].filename);
+        unwrapTrigrams(documents[docId]);
+        if (documents[docId].trigramOccurrences.size() > 0) {
+            changedFiles.push_back(documents[docId].filename);
+            this->documents.push_back(std::move(documents[docId]));
+        }
     }
     return changedFiles;
 }
