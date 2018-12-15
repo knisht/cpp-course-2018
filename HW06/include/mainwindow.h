@@ -1,7 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "indexworker.h"
+#include "indexdriver.h"
 #include <QDebug>
 #include <QListWidgetItem>
 #include <QMainWindow>
@@ -27,7 +27,7 @@ public slots:
     void changeDirectory();
     void nextOccurrence();
     void previousOccurrence();
-    void getOccurrence(SubstringOccurrence const &);
+    void getOccurrence(QString const &);
     void setProgressBarLimit(qint64 limit);
     void changeProgressBarValue(qint64 delta);
     void stopActions();
@@ -44,21 +44,17 @@ signals:
     void interrupt();
 
 private:
-    struct CursorPosition {
-        qsizetype occurrenceIndex;
-        SubstringOccurrence *document;
-    } cursor;
-
     void renderText();
+    void highlightSpecificOccurrence();
 
-    Ui::MainWindow *ui;
+    qsizetype occurrenceIndex;
+    std::unique_ptr<Ui::MainWindow> ui;
     QString currentDir;
-    std::vector<SubstringOccurrence> currentOccurrences;
-    size_t wordSize;
-    QThread thread;
+    std::vector<size_t> currentWordPositionsInFile;
     QTextCursor defaultCursor;
-    IndexWorker worker;
-    QString curFileName;
+    IndexDriver worker;
+    QString currentFileName;
+    QString currentWord;
 };
 
 #endif // MAINWINDOW_H

@@ -14,6 +14,7 @@ set (CMAKE_AUTOUIC ON)
 set (CMAKE_INCLUDE_CURRENT_DIR ON)
 
 find_package(Qt5Widgets)
+find_package(Qt5Concurrent)
 
 add_executable(index_test
     ${TEST_DIR}/gtest/gtest.h
@@ -35,7 +36,7 @@ add_executable(librarian
     ${INCLUDE_DIR}/substringoccurrence.h
     ${INCLUDE_DIR}/document.h
     ${INCLUDE_DIR}/trigramindex.h
-    ${INCLUDE_DIR}/indexworker.h
+    ${INCLUDE_DIR}/indexdriver.h
     ${INCLUDE_DIR}/trigram.h
     ${INCLUDE_DIR}/taskcontext.h
     ${SOURCE_DIR}/trigram.cpp
@@ -43,7 +44,7 @@ add_executable(librarian
     ${SOURCE_DIR}/main.cpp
     ${SOURCE_DIR}/mainwindow.cpp
     ${SOURCE_DIR}/trigramindex.cpp
-    ${SOURCE_DIR}/indexworker.cpp
+    ${SOURCE_DIR}/indexdriver.cpp
     ${SOURCE_DIR}/mainwindow.ui
     )
 
@@ -59,5 +60,5 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 
-target_link_libraries(index_test Qt5::Widgets -lpthread stdc++fs)
-target_link_libraries(librarian Qt5::Widgets -lpthread)
+target_link_libraries(index_test Qt5::Widgets  -lpthread stdc++fs)
+target_link_libraries(librarian Qt5::Widgets Qt5::Concurrent -lpthread)

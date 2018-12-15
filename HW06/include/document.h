@@ -7,8 +7,19 @@
 
 struct Document {
     QString filename;
-    std::unordered_set<Trigram, Trigram::TrigramHash> trigramOccurrences;
+    std::vector<Trigram> trigramOccurrences;
     explicit Document(QString filename);
-};
+    Document();
 
+    void sort();
+
+    bool contains(Trigram const &trigram);
+
+    friend bool nonTrivial(Document const &document);
+    friend void swap(Document &first, Document &second);
+
+    void add(Trigram const &trigram);
+};
+bool nonTrivial(Document const &document);
+void swap(Document &first, Document &second);
 #endif

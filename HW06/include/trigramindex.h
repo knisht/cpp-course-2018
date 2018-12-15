@@ -9,6 +9,7 @@
 #include <QDirIterator>
 #include <QString>
 #include <algorithm>
+#include <fstream>
 #include <unordered_set>
 #include <vector>
 
@@ -32,12 +33,12 @@ public:
         // just function for testing
         auto documents = getFileEntries(root, dirContext);
         calculateTrigrams(documents, usualContext);
-        setUpDocuments(documents, usualContext);
+        //        setUpDocuments(documents, usualContext);
     }
 
     template <typename T>
-    std::vector<SubstringOccurrence>
-    findSubstring(QString const &substring, TaskContext<T, qsizetype> &context)
+    std::vector<QString> findSubstring(QString const &substring,
+                                       TaskContext<T, qsizetype> &context)
     {
         return findOccurrencesInFiles(
             getCandidateFileIds(substring.toStdString(), context),
@@ -70,28 +71,13 @@ public:
     static void calculateTrigrams(std::vector<Document> &documents,
                                   TaskContext<T, qsizetype> &context)
     {
-
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
         for (size_t i = 0; i < documents.size(); ++i) {
             if (context.isTaskCancelled()) {
                 continue;
             }
-            unwrapTrigrams(documents[i]);
+            //            unwrapTrigrams(documents[i]);
+            documents[i].sort();
             std::invoke(context.callOnSuccess, context.caller, 1);
-        }
-    }
-
-    template <typename T>
-    void setUpDocuments(std::vector<Document> &documents,
-                        TaskContext<T, qsizetype> &context)
-    {
-        for (size_t i = 0; i < documents.size() && !context.isTaskCancelled();
-             ++i) {
-            if (documents[i].trigramOccurrences.size() > 0) {
-                this->documents.push_back(std::move(documents[i]));
-            }
         }
     }
 
@@ -121,8 +107,7 @@ public:
         for (size_t i = 0; i < documents.size(); ++i) {
             bool containsAll = true;
             for (Trigram const &trigram : targetTrigrams) {
-                containsAll &=
-                    (documents[i].trigramOccurrences.count(trigram) != 0);
+                containsAll &= (documents[i].contains(trigram));
                 if (!containsAll) {
                     break;
                 }
@@ -135,37 +120,33 @@ public:
     }
 
     template <typename T>
-    std::vector<SubstringOccurrence>
-    findOccurrencesInFiles(std::vector<size_t> fileIds,
-                           std::string const &target,
-                           TaskContext<T, qsizetype> &context)
+    void findOccurrencesInFiles(std::vector<size_t> fileIds,
+                                std::string const &target,
+                                TaskContext<T, QString const &> &context)
     {
         std::boyer_moore_searcher processed_target(target.begin(),
                                                    target.end());
-        std::vector<SubstringOccurrence> result;
+        std::vector<QString> result;
         for (size_t i = 0; i < fileIds.size(); ++i) {
             if (context.isTaskCancelled()) {
-                return {};
+                return;
             }
             std::vector<size_t> vec =
-                findExactOccurrences(documents[fileIds[i]], processed_target,
-                                     target.size(), context);
+                findExactOccurrences(documents[fileIds[i]].filename,
+                                     processed_target, target.size(), context);
             if (vec.size() > 0) {
-                result.push_back(
-                    SubstringOccurrence(documents[fileIds[i]].filename));
-                result.back().occurrences = std::move(vec);
+                std::invoke(context.callOnSuccess, context.caller,
+                            documents[fileIds[i]].filename);
             }
         }
-        return result;
     }
 
     template <typename T, typename Q>
-    static std::vector<size_t>
-    findExactOccurrences(Document const &doc,
-                         std::boyer_moore_searcher<Q> target,
-                         size_t target_size, TaskContext<T, qsizetype> &context)
+    static std::vector<size_t> findExactOccurrences(
+        QString const &doc, std::boyer_moore_searcher<Q> target,
+        size_t target_size, TaskContext<T, QString const &> &context)
     {
-        QFile fileInstance(doc.filename);
+        QFile fileInstance(doc);
         fileInstance.open(QFile::ReadOnly);
         size_t fileSize = static_cast<size_t>(fileInstance.size());
         size_t blockSize = std::min(fileSize, static_cast<size_t>(BUF_SIZE));
@@ -178,6 +159,7 @@ public:
             std::search(buf.begin(), buf.begin() + blockSize, target);
         size_t numchars = 0;
         std::vector<size_t> result;
+        // TODO: special provessing for words with width 3
         while (occurrencePosition !=
                buf.begin() + static_cast<qint64>(blockSize)) {
             if (context.isTaskCancelled()) {
@@ -238,6 +220,74 @@ public:
         return result;
     }
 
+    template <typename T>
+    static void unwrapTrigrams(Document &document,
+                               TaskContext<T, qsizetype> context)
+    {
+        QFile fileInstance{QFileInfo(document.filename).absoluteFilePath()};
+        if (!fileInstance.open(QFile::ReadOnly)) {
+            qWarning() << "Could not open" << document.filename
+                       << "| Reindex recommended";
+            return;
+        }
+        qsizetype fileSize = QFileInfo(document.filename).size();
+
+        // NOTE: files with filesize <= 2 are ignored
+        if (fileSize <= 2) {
+            std::invoke(context.callOnSuccess, context.caller, 1);
+            return;
+        }
+        qsizetype block_size = qMin(fileSize, BUF_SIZE);
+        std::string bytes;
+        bytes.resize(static_cast<size_t>(block_size + 1), '\0');
+        bytes.back() = '\1';
+        char last[3];
+        int passed = 0;
+
+        while (fileSize > 0) {
+            qint64 receivedBytes =
+                fileInstance.read(&bytes[0], static_cast<qint64>(block_size));
+            bool has_zero =
+                (strlen(&bytes[0]) < static_cast<size_t>(block_size));
+            for (size_t i = 0; i < static_cast<size_t>(receivedBytes) / 4;
+                 ++i) {
+                if (bytes[4 * i] == 0) {
+                    has_zero = true;
+                }
+            }
+            if (has_zero) {
+                document.trigramOccurrences.clear();
+                break;
+            }
+            if (passed > 0) {
+                last[2] = bytes[0];
+                document.add({last});
+                char trigramBuf[3] = {last[1], last[2], bytes[1]};
+                document.add({trigramBuf});
+            }
+            if (receivedBytes > 2) {
+                for (size_t i = 0; i < static_cast<size_t>(receivedBytes) - 2;
+                     ++i) {
+                    document.add(&bytes[i]);
+                }
+                if (document.trigramOccurrences.size() > 20000) {
+                    document.trigramOccurrences.clear();
+                    break;
+                }
+                last[0] = bytes[static_cast<size_t>(block_size) - 2];
+                last[1] = bytes[static_cast<size_t>(block_size) - 1];
+            }
+            fileSize -= receivedBytes;
+            block_size = qMin(block_size, fileSize);
+            ++passed;
+        }
+        std::invoke(context.callOnSuccess, context.caller, 1);
+    }
+    //    static void unwrapTrigrams(Document &document);
+
+    void getFilteredDocuments(std::vector<Document> &);
+    friend class IndexDriver;
+
 private:
     template <typename T>
     void nothing(T)
@@ -251,9 +301,7 @@ private:
                    0xbf;
     }
 
-    static void unwrapTrigrams(Document &document);
-
-    static const qint32 BUF_SIZE = 1 << 20;
+    static const qsizetype BUF_SIZE = 1 << 12;
     std::vector<Document> documents;
 };
 #endif // TRIGRAM_INDEX_H

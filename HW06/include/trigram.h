@@ -9,7 +9,7 @@ struct Trigram {
 
     Trigram(std::string str);
 
-    Trigram(size_t code);
+    Trigram(uint32_t code);
 
     friend bool operator<(Trigram const &a, Trigram const &b);
 
@@ -17,7 +17,7 @@ struct Trigram {
 
     friend bool operator==(Trigram const &a, Trigram const &b);
 
-    size_t code() const;
+    uint32_t code() const;
     bool substr(std::string const &) const;
     std::string toString() const;
 
@@ -27,13 +27,13 @@ struct Trigram {
     struct TrigramHash {
         inline size_t operator()(Trigram const &trigram) const
         {
-            return trigram.trigram_code;
+            return static_cast<size_t>(trigram.code());
         }
     };
 
 private:
-    size_t encode(const char *) const;
-    size_t trigram_code;
+    uint32_t encode(const char *) const;
+    char trigram_code[3];
 };
 
 #endif // TRIGRAM_H
