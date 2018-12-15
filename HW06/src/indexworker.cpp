@@ -27,7 +27,6 @@ void IndexWorker::processChangedDirectory(const QString &path)
 
 void IndexWorker::catchOccurrence(SubstringOccurrence const &occurrence)
 {
-    // TODO: make light occurrence;
     emit occurrenceFound(occurrence);
 }
 

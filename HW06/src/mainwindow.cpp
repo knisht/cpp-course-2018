@@ -67,7 +67,6 @@ void MainWindow::renderText()
     fmt.setBackground(QColor{200, 100, 100, 255});
     ui->filesContent->textCursor().clearSelection();
     for (auto &&it : currentOccurrences) {
-        // TODO: make hashmap
         if (it.filename == curFileName) {
             for (size_t position : it.occurrences) {
                 QTextCursor cursor(ui->filesContent->textCursor());
@@ -102,7 +101,6 @@ void MainWindow::changeDirectory()
     if (dir != "") {
         emit indexate(dir);
         currentDir = dir;
-        // TODO: relative path (with root processing)
         ui->label->setText("Current dir: " + currentDir);
     }
 }
