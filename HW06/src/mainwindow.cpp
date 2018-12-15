@@ -86,7 +86,7 @@ void MainWindow::renderText()
 void MainWindow::getFileContent(QListWidgetItem *item)
 {
     qInfo() << "Opening" << item->text();
-    curFileName = item->text();
+    curFileName = QDir(currentDir).absoluteFilePath(item->text());
     ui->currentFileLabel->setText("Opened file: " +
                                   QFileInfo(curFileName).fileName());
     renderText();
@@ -100,7 +100,7 @@ void MainWindow::changeDirectory()
     qInfo() << "Directory chosen:" << dir;
     if (dir != "") {
         emit indexate(dir);
-        currentDir = dir;
+        currentDir = QDir(dir).absolutePath();
         ui->label->setText("Current dir: " + currentDir);
     }
 }
@@ -206,7 +206,7 @@ void MainWindow::getOccurrence(SubstringOccurrence const &oc)
     //    NOTE: better to keep above lines commented, otherwise program
     //    performance is much slower
     currentOccurrences.push_back(oc);
-    ui->filesWidget->addItem(oc.filename);
+    ui->filesWidget->addItem(QDir(currentDir).relativeFilePath(oc.filename));
     if (oc.filename == curFileName) {
         if (QFileInfo(curFileName).size() < 3000000) {
             renderText();
