@@ -20,15 +20,11 @@ std::ifstream::pos_type file_size(const char *filename)
     return in.tellg();
 }
 
-namespace
-{
-
 struct ContextHandler {
     size_t getTransactionalId() { return 0; }
     void nothing(qsizetype) {}
     void nothing(QString const &) {}
 } static contextHandler;
-} // namespace
 
 static TaskContext qsizetypeContext = TaskContext<ContextHandler, qsizetype>{
     0, &contextHandler, &ContextHandler::nothing};
