@@ -199,6 +199,27 @@ TEST(correctness_watching, add_file)
     fs::remove_all(directory);
 }
 
+TEST(correctness_watching, change_file)
+{
+    std::string directory = "./tmp";
+    fs::create_directories(directory);
+    std::string target = "abcde";
+    std::ofstream(directory + "/a") << target << std::flush;
+    TrigramIndex index;
+    index.setUp(QString::fromStdString(directory), qsizetypeContext,
+                substirngContext);
+    target = "xyzwvu";
+    std::ofstream(directory + "/a") << target << std::flush;
+    index.reprocessFile(QFileInfo("./tmp/a").absoluteFilePath());
+    std::vector<SubstringOccurrence> occurrences =
+        index.findSubstring("yzwvu", qsizetypeContext);
+    std::vector<SubstringOccurrence> expected{
+        {QFileInfo("./tmp/a").absoluteFilePath(), {1}}};
+    resort(occurrences, expected);
+    ASSERT_EQ(expected, occurrences);
+    fs::remove_all(directory);
+}
+
 // TEST(correctness, time)
 //{
 //    std::string directory = "/home/knisht/repos";
