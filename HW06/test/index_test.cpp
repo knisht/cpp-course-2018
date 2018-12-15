@@ -170,11 +170,31 @@ TEST(correctness_finding, russian)
     fs::create_directories(directory);
     std::string target = "Ехал Грека через реку, видит Грека - в реке рак";
     std::ofstream(directory + "/a") << target << std::flush;
-    TrigramIndex index;
     std::vector<SubstringOccurrence> occurrences =
         getOccurrences(directory, "Грека");
     std::vector<SubstringOccurrence> expected{
         {QFileInfo("./tmp/a").absoluteFilePath(), {5, 29}}};
+    ASSERT_EQ(expected, occurrences);
+    fs::remove_all(directory);
+}
+
+TEST(correctness_watching, add_file)
+{
+    std::string directory = "./tmp";
+    fs::create_directories(directory);
+    std::string target = "abcde";
+    std::ofstream(directory + "/a") << target << std::flush;
+    TrigramIndex index;
+    index.setUp(QString::fromStdString(directory), qsizetypeContext,
+                substirngContext);
+    target = "xyzwvu";
+    std::ofstream(directory + "/b") << target << std::flush;
+    index.reprocessDirectory(QFileInfo("./tmp").absoluteFilePath());
+    std::vector<SubstringOccurrence> occurrences =
+        index.findSubstring("yzwvu", qsizetypeContext);
+    std::vector<SubstringOccurrence> expected{
+        {QFileInfo("./tmp/b").absoluteFilePath(), {1}}};
+    resort(occurrences, expected);
     ASSERT_EQ(expected, occurrences);
     fs::remove_all(directory);
 }
