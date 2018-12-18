@@ -99,6 +99,27 @@
             </property>
            </widget>
           </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_5">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QPushButton" name="fileManagerButton">
+              <property name="text">
+               <string>Show in file manager</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="editorButton">
+              <property name="text">
+               <string>Show in editor</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
          </layout>
         </item>
         <item>
@@ -132,7 +153,7 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout">
             <property name="topMargin">
-             <number>10</number>
+             <number>0</number>
             </property>
             <item>
              <widget class="QPushButton" name="prevOccurrenceButton">
@@ -153,6 +174,13 @@
          </layout>
         </item>
        </layout>
+      </item>
+      <item>
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -309,6 +337,38 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>fileManagerButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>openFileManager()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>206</x>
+     <y>341</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>413</x>
+     <y>311</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>editorButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>openEditor()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>304</x>
+     <y>340</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>413</x>
+     <y>311</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>findSubstring()</slot>
@@ -318,5 +378,7 @@
   <slot>nextOccurrence()</slot>
   <slot>stopActions()</slot>
   <slot>renderText()</slot>
+  <slot>openFileManager()</slot>
+  <slot>openEditor()</slot>
  </slots>
 </ui>

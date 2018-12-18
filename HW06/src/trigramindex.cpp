@@ -10,8 +10,6 @@
 #include <unordered_set>
 #include <utility>
 
-static const qint64 BUFF_SIZE = 1 << 12;
-
 void TrigramIndex::printDocuments()
 {
     std::cout << "Files at all: " << documents.size() << std::endl;

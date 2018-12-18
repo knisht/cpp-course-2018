@@ -40,9 +40,9 @@ void MainWindow::findSubstring()
     if (currentWord.size() == 0) {
         return;
     }
+    emit findSubstring(currentWord);
     currentWordPositionsInFile.clear();
     ui->filesWidget->clear();
-    emit findSubstring(currentWord);
 }
 
 void MainWindow::renderText()
@@ -165,7 +165,7 @@ void MainWindow::onFinishedFinding(QString const &result)
 
 void MainWindow::getOccurrence(QString const &newFile)
 {
-    //    ui->progressBar->setValue(ui->progressBar->value() + 1);
+    //    ui->progressBar->setValue(ui->progressBar->value() + 500);
     //    NOTE: better to keep above lines commented, otherwise program
     //    performance is much slower
     ui->filesWidget->addItem(QDir(currentDir).relativeFilePath(newFile));
@@ -192,6 +192,22 @@ void MainWindow::changeProgressBarValue(qint64 delta)
 {
     ui->progressBar->setValue(
         static_cast<int>(ui->progressBar->value() + delta));
+}
+
+void MainWindow::openFileManager()
+{
+    if (currentFileName == "") {
+        return;
+    }
+    QDesktopServices::openUrl(QFileInfo(currentFileName).absoluteDir().path());
+}
+
+void MainWindow::openEditor()
+{
+    if (currentFileName == "") {
+        return;
+    }
+    QDesktopServices::openUrl(currentFileName);
 }
 
 void MainWindow::stopActions() { worker.interrupt(); }

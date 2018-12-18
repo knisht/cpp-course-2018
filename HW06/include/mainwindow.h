@@ -31,6 +31,8 @@ public slots:
     void setProgressBarLimit(qint64 limit);
     void changeProgressBarValue(qint64 delta);
     void stopActions();
+    void openFileManager();
+    void openEditor();
 
 private slots:
     void onStartedIndexing();

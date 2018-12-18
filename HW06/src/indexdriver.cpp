@@ -36,9 +36,13 @@ void IndexDriver::processChangedDirectory(const QString &path)
     //    }
 }
 
-void IndexDriver::catchProperFile(QString const &occurrence)
+void IndexDriver::catchProperFile(QString const &occurrence, size_t sender_id)
 {
-    emit properFileFound(occurrence);
+    if (sender_id == transactionalId) {
+        emit properFileFound(occurrence);
+    } else {
+        qDebug() << "rejected";
+    }
 }
 
 void IndexDriver::findSubstring(QString const &substring)
@@ -54,7 +58,7 @@ void IndexDriver::findSubstringSingular(QString const &substring)
     size_t validTransactionalId = ++transactionalId;
     TaskContext<IndexDriver, qsizetype> currentContext{
         validTransactionalId, this, &IndexDriver::increaseProgress};
-    TaskContext<IndexDriver, QString const &> catcherContext{
+    TaskContext<IndexDriver, QString const &, size_t> catcherContext{
         validTransactionalId, this, &IndexDriver::catchProperFile};
     emit startedFinding();
     std::string stdTarget = substring.toStdString();
@@ -63,7 +67,7 @@ void IndexDriver::findSubstringSingular(QString const &substring)
     std::vector<size_t> fileIds =
         index.getCandidateFileIds(stdTarget, currentContext);
     if (fileIds.size() == 0) {
-        emit finishedFinding("");
+        emit finishedFinding("No files");
         return;
     }
     emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
@@ -110,8 +114,8 @@ void IndexDriver::indexSingular(QString const &path)
     timer.start();
     std::vector<Document> documents =
         TrigramIndex::getFileEntries(path, directoryContext);
-    emit determinedFilesAmount(static_cast<long long>(documents.size()));
-    qDebug() << documents.size();
+    emit determinedFilesAmount(static_cast<long long>(documents.size() + 10));
+    qDebug() << "Documents:" << documents.size();
     using namespace std::placeholders;
     auto activatedUnwrapTrigrams = std::bind(
         TrigramIndex::unwrapTrigrams<IndexDriver>, _1, currentContext);
@@ -119,6 +123,23 @@ void IndexDriver::indexSingular(QString const &path)
     QtConcurrent::blockingMap(documents.begin(), documents.end(),
                               activatedUnwrapTrigrams);
     index.getFilteredDocuments(documents);
+    //    std::unordered_set<Trigram, Trigram::TrigramHash> trigrams;
+    //    size_t sum = 0;
+    //    size_t ascii_cnt = 0;
+    //    for (Document const &d : index.getDocuments()) {
+    //        sum += d.trigramOccurrences.size();
+    //        for (Trigram t : d.trigramOccurrences) {
+    //            trigrams.insert(t);
+    //            std::string text = t.toString();
+    //            if ((text[0] & (1 << 8)) == 0 && (text[2] & (1 << 8)) == 0 &&
+    //                (text[1] & (1 << 8)) == 0) {
+    //                ++ascii_cnt;
+    //            }
+    //        }
+    //    }
+    //    qDebug() << "all trigrams" << sum;
+    //    qDebug() << "Different Trigrams" << trigrams.size();
+    //    qDebug() << "Ascii from them" << ascii_cnt;
     QtConcurrent::blockingMap(index.documents, &Document::sort);
     //        for (Document const &document :
     //    index.getDocuments()) {
@@ -127,6 +148,7 @@ void IndexDriver::indexSingular(QString const &path)
     //    }
     qInfo() << "Indexing of" << path << "finished in" << timer.elapsed()
             << "ms";
+    qDebug() << "filesize" << index.getDocuments().size();
     if (currentContext.isTaskCancelled()) {
         emit finishedIndexing("interrupted");
     } else {
@@ -139,10 +161,11 @@ size_t IndexDriver::getTransactionalId() { return transactionalId; }
 std::vector<size_t> IndexDriver::getFileStat(QString const &filename,
                                              QString const &pattern)
 {
+    // TODO: move to trigramindex
     std::string preprocessedPattern = pattern.toStdString();
     std::boyer_moore_searcher searcher(preprocessedPattern.begin(),
                                        preprocessedPattern.end());
-    TaskContext<IndexDriver, QString const &> context = {
+    TaskContext<IndexDriver, QString const &, size_t> context = {
         transactionalId, this, &IndexDriver::catchProperFile};
     return index.findExactOccurrences(filename, searcher,
                                       preprocessedPattern.size(), context);

@@ -18,7 +18,7 @@ public:
     void interrupt();
     void increaseProgress(qsizetype);
     void setWatchingDirectory(QString const &directory);
-    void catchProperFile(QString const &);
+    void catchProperFile(QString const &, size_t sender_id);
     std::vector<size_t> getFileStat(QString const &filename,
                                     QString const &pattern);
     size_t getTransactionalId();
