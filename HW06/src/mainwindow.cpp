@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <QtWidgets>
+#include <iostream>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), occurrenceIndex(-1), ui(new Ui::MainWindow),
@@ -12,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     ui->label->setText("Current dir: " + QDir(".").canonicalPath());
     connect(this, SIGNAL(indexate(QString const &)), &worker,
-            SLOT(indexate(QString const &)));
+            SLOT(indexateAsync(QString const &)));
     connect(&worker, SIGNAL(startedIndexing()), this,
             SLOT(onStartedIndexing()));
     connect(&worker, SIGNAL(finishedIndexing(QString const &)), this,
@@ -21,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&worker, SIGNAL(finishedFinding(QString const &)), this,
             SLOT(onFinishedFinding(QString const &)));
     connect(this, SIGNAL(findSubstring(QString const &)), &worker,
-            SLOT(findSubstring(QString const &)));
+            SLOT(findSubstringAsync(QString const &)));
     connect(&worker, SIGNAL(properFileFound(QString const &)), this,
             SLOT(getOccurrence(QString const &)));
     connect(&worker, SIGNAL(determinedFilesAmount(qint64)), this,
@@ -40,7 +41,7 @@ void MainWindow::findSubstring()
     if (currentWord.size() == 0) {
         return;
     }
-    emit findSubstring(currentWord);
+    worker.findSubstringAsync(currentWord);
     currentWordPositionsInFile.clear();
     ui->filesWidget->clear();
 }
@@ -76,8 +77,10 @@ void MainWindow::getFileContent(QListWidgetItem *item)
     currentFileName = QDir(currentDir).absoluteFilePath(item->text());
     ui->currentFileLabel->setText("Opened file: " +
                                   QFileInfo(currentFileName).fileName());
+    qDebug() << "Positions started!";
     currentWordPositionsInFile =
         worker.getFileStat(currentFileName, currentWord);
+    qDebug() << "Positions found!";
     renderText();
 }
 

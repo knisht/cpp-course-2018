@@ -291,10 +291,23 @@ public:
         for (Trigram t : trigram_set) {
             document.add(t);
         }
+        document.sort();
         std::invoke(context.callOnSuccess, context.caller, 1);
     }
     //    static void unwrapTrigrams(Document &document);
-    void getFilteredDocuments(std::vector<Document> &);
+    template <typename T>
+    void getFilteredDocuments(std::vector<Document> &candidateDocuments,
+                              TaskContext<T, qsizetype> &context)
+    {
+        for (size_t i = 0;
+             i < candidateDocuments.size() && !context.isTaskCancelled(); ++i) {
+            if (nonTrivial(candidateDocuments[i])) {
+                this->documents.push_back({});
+                swap(this->documents.back(), candidateDocuments[i]);
+            }
+        }
+    }
+
     friend class IndexDriver;
 
 private:
@@ -304,12 +317,16 @@ private:
     }
     static inline bool is_unicode_independent(char c) noexcept
     {
-        return static_cast<unsigned int>(reinterpret_cast<unsigned char &>(c)) <
-                   0x80 ||
-               static_cast<unsigned int>(reinterpret_cast<unsigned char &>(c)) >
-                   0xbf;
+        return (static_cast<unsigned int>(
+                    reinterpret_cast<unsigned char &>(c)) < 0x80 ||
+                static_cast<unsigned int>(
+                    reinterpret_cast<unsigned char &>(c)) > 0xbf)
+#ifdef __unix__
+               && static_cast<unsigned int>(
+                      reinterpret_cast<unsigned char &>(c)) != 0x0d
+#endif
+            ;
     }
-    std::vector<std::vector<size_t>> trigrams;
     static const qsizetype BUF_SIZE = 1 << 12;
     std::vector<Document> documents;
 };

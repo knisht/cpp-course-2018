@@ -70,17 +70,6 @@ std::vector<QString> TrigramIndex::reprocessDirectory(QString const &filename)
 
 void TrigramIndex::flush() { documents.clear(); }
 
-void TrigramIndex::getFilteredDocuments(
-    std::vector<Document> &candidateDocuments)
-{
-    for (size_t i = 0; i < candidateDocuments.size(); ++i) {
-        if (nonTrivial(candidateDocuments[i])) {
-            this->documents.push_back({});
-            swap(this->documents.back(), candidateDocuments[i]);
-        }
-    }
-}
-
 const std::vector<Document> &TrigramIndex::getDocuments() const
 {
     return documents;

@@ -1,5 +1,5 @@
-#ifndef INDEXWORKER_H
-#define INDEXWORKER_H
+#ifndef LIBRARIAN_INDEXDRIVER_H
+#define LIBRARIAN_INDEXDRIVER_H
 
 #include "trigramindex.h"
 #include <QFileSystemWatcher>
@@ -34,8 +34,8 @@ signals:
     void progressChanged(qint64 amount);
 
 public slots:
-    void indexate(QString const &path);
-    void findSubstring(QString const &substring);
+    void indexateAsync(QString const &path);
+    void findSubstringAsync(QString const &substring);
 
 private slots:
     void processChangedFile(const QString &);
@@ -44,8 +44,10 @@ private slots:
 private:
     void indexSingular(QString const &path);
     void findSubstringSingular(QString const &substring);
+    void sortD(Document &document);
 
-    QFutureWatcher<void> futureWatcher;
+    QFutureWatcher<void> globalTaskWatcher;
+    QFutureWatcher<void> currentTaskWatcher;
     TrigramIndex index;
     std::atomic_size_t transactionalId;
     QFileSystemWatcher watcher;

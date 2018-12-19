@@ -50,11 +50,11 @@ private:
     void highlightSpecificOccurrence();
 
     qsizetype occurrenceIndex;
+    IndexDriver worker;
     std::unique_ptr<Ui::MainWindow> ui;
     QString currentDir;
     std::vector<size_t> currentWordPositionsInFile;
     QTextCursor defaultCursor;
-    IndexDriver worker;
     QString currentFileName;
     QString currentWord;
 };

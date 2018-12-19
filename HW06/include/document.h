@@ -8,7 +8,14 @@
 struct Document {
     QString filename;
     std::vector<Trigram> trigramOccurrences;
+
     explicit Document(QString filename);
+
+    Document(Document const &other);
+    Document &operator=(Document const &other);
+    Document(Document &&other);
+    // TODO: maybe move ctors slow my program
+    Document &operator=(Document &&other);
     Document();
 
     void sort();

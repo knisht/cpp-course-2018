@@ -8,7 +8,8 @@
 #include <unordered_set>
 
 IndexDriver::IndexDriver(QObject *parent)
-    : QObject(parent), futureWatcher(), index(), transactionalId(0), watcher()
+    : QObject(parent), globalTaskWatcher(), index(), transactionalId(0),
+      watcher()
 {
     connect(&watcher, SIGNAL(fileChanged(const QString &)), this,
             SLOT(processChangedFile(const QString &)));
@@ -16,11 +17,7 @@ IndexDriver::IndexDriver(QObject *parent)
             SLOT(processChangedDirectory(const QString &)));
 }
 
-IndexDriver::~IndexDriver()
-{
-    ++transactionalId;
-    futureWatcher.cancel();
-}
+IndexDriver::~IndexDriver() { interrupt(); }
 
 void IndexDriver::processChangedFile(const QString &path)
 {
@@ -45,12 +42,12 @@ void IndexDriver::catchProperFile(QString const &occurrence, size_t sender_id)
     }
 }
 
-void IndexDriver::findSubstring(QString const &substring)
+void IndexDriver::findSubstringAsync(QString const &substring)
 {
     interrupt();
     QFuture<void> indexFuture =
         QtConcurrent::run(this, &IndexDriver::findSubstringSingular, substring);
-    futureWatcher.setFuture(indexFuture);
+    globalTaskWatcher.setFuture(indexFuture);
 }
 
 void IndexDriver::findSubstringSingular(QString const &substring)
@@ -91,12 +88,18 @@ void IndexDriver::setWatchingDirectory(QString const &directory)
     //    watcher.addPath(directory);
 }
 
-void IndexDriver::indexate(QString const &path)
+void IndexDriver::indexateAsync(QString const &path)
 {
     interrupt();
     QFuture<void> indexFuture =
         QtConcurrent::run(this, &IndexDriver::indexSingular, path);
-    futureWatcher.setFuture(indexFuture);
+    globalTaskWatcher.setFuture(indexFuture);
+}
+
+void IndexDriver::sortD(Document &document)
+{
+    document.sort();
+    emit progressChanged(1);
 }
 
 // TODO: better naming
@@ -114,15 +117,28 @@ void IndexDriver::indexSingular(QString const &path)
     timer.start();
     std::vector<Document> documents =
         TrigramIndex::getFileEntries(path, directoryContext);
-    emit determinedFilesAmount(static_cast<long long>(documents.size() + 10));
+    if (currentContext.isTaskCancelled()) {
+        emit finishedIndexing("interrupted");
+        return;
+    }
+    emit determinedFilesAmount(static_cast<long long>(documents.size()));
     qDebug() << "Documents:" << documents.size();
     using namespace std::placeholders;
     auto activatedUnwrapTrigrams = std::bind(
         TrigramIndex::unwrapTrigrams<IndexDriver>, _1, currentContext);
-    //    TrigramIndex::calculateTrigrams(documents, currentContext);
-    QtConcurrent::blockingMap(documents.begin(), documents.end(),
-                              activatedUnwrapTrigrams);
-    index.getFilteredDocuments(documents);
+    QFuture<void> unwrapJob = QtConcurrent::map(
+        documents.begin(), documents.end(), activatedUnwrapTrigrams);
+    currentTaskWatcher.setFuture(unwrapJob);
+    unwrapJob.waitForFinished();
+    if (currentContext.isTaskCancelled()) {
+        emit finishedIndexing("interrupted");
+        return;
+    }
+    index.getFilteredDocuments(documents, currentContext);
+    if (currentContext.isTaskCancelled()) {
+        emit finishedIndexing("interrupted");
+        return;
+    }
     //    std::unordered_set<Trigram, Trigram::TrigramHash> trigrams;
     //    size_t sum = 0;
     //    size_t ascii_cnt = 0;
@@ -140,7 +156,11 @@ void IndexDriver::indexSingular(QString const &path)
     //    qDebug() << "all trigrams" << sum;
     //    qDebug() << "Different Trigrams" << trigrams.size();
     //    qDebug() << "Ascii from them" << ascii_cnt;
-    QtConcurrent::blockingMap(index.documents, &Document::sort);
+    //    auto processedSort = std::bind(&IndexDriver::sortD, this, _1);
+    //    QFuture<void> sortJob = QtConcurrent::map(
+    //        index.documents.begin(), index.documents.end(), processedSort);
+    //    currentTaskWatcher.setFuture(sortJob);
+    //    sortJob.waitForFinished();
     //        for (Document const &document :
     //    index.getDocuments()) {
     //        watcher.addPath(document.filename);
@@ -173,9 +193,10 @@ std::vector<size_t> IndexDriver::getFileStat(QString const &filename,
 
 void IndexDriver::interrupt()
 {
+    qDebug() << "Interrupting";
     ++transactionalId;
-    futureWatcher.cancel();
-    if (futureWatcher.isRunning()) {
-        futureWatcher.waitForFinished();
-    }
+    globalTaskWatcher.cancel();
+    currentTaskWatcher.cancel();
+    currentTaskWatcher.waitForFinished();
+    globalTaskWatcher.waitForFinished();
 }
