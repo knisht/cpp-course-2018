@@ -26,8 +26,6 @@ public slots:
     void findSubstring();
     void getFileContent(QListWidgetItem *);
     void changeDirectory();
-    void nextOccurrence();
-    void previousOccurrence();
     void getOccurrence(QString const &);
     void setProgressBarLimit(qint64 limit);
     void changeProgressBarValue(qint64 delta);
@@ -47,18 +45,12 @@ signals:
     void interrupt();
 
 private:
-    void renderText();
     void highlightSpecificOccurrence();
     void rtxt(QTextCharFormat);
 
-    qsizetype occurrenceIndex;
     IndexDriver worker;
     std::unique_ptr<Ui::MainWindow> ui;
     QString currentDir;
-    std::vector<size_t> currentWordPositionsInFile;
-    QTextCursor defaultCursor;
-    TextViewDriver textDriver;
-    QString currentFileName;
     QString currentWord;
 };
 

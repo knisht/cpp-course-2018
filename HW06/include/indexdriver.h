@@ -44,7 +44,6 @@ private slots:
 private:
     void indexateSync(QString const &path);
     void findSubstringSync(QString const &substring);
-    void sortD(Document &document);
 
     QFutureWatcher<void> globalTaskWatcher;
     QFutureWatcher<void> currentTaskWatcher;

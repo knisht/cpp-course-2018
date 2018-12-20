@@ -11,8 +11,8 @@ struct Document {
 
     explicit Document(QString filename);
 
-    //    Document(Document const &other);
-    //    Document &operator=(Document const &other);
+    Document(Document const &other);
+    Document &operator=(Document const &other);
     Document(Document &&other);
     //    // TODO: maybe move ctors slow my program
     //    Document &operator=(Document &&other);

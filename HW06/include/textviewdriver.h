@@ -6,8 +6,29 @@ class TextViewDriver : public QTextEdit
 {
     Q_OBJECT
 public:
-    TextViewDriver() {}
-    virtual ~TextViewDriver() {}
+    TextViewDriver(QWidget *&);
+    virtual ~TextViewDriver();
+
+    void setWordPositions(std::vector<size_t> &&word_positions);
+    void setWordSize(qsizetype);
+
+    void flush();
+public slots:
+    void establishNextOccurrence();
+    void establishPrevOccurrence();
+    void loadText(QString const &path);
+    void renderText();
+    void interrupt();
+    QString const &getCurrentFilename() const;
+
+private:
+    void highlightCurrentOccurrence();
+
+    QString currentFileName;
+    qsizetype occurrenceIndex;
+    QTextCursor defaultCursor;
+    qsizetype wordSize;
+    std::vector<size_t> currentWordPositionsInFile;
 };
 
 #endif

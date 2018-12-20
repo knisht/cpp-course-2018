@@ -138,7 +138,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QTextEdit" name="filesContent">
+           <widget class="TextViewDriver" name="filesContent">
             <property name="readOnly">
              <bool>true</bool>
             </property>
@@ -239,6 +239,17 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>TextViewDriver</class>
+   <extends>QTextEdit</extends>
+   <header location="global">include/textviewdriver.h</header>
+   <slots>
+    <slot>establishNextOccurrence()</slot>
+    <slot>establishPrevOccurrence()</slot>
+   </slots>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>
@@ -276,32 +287,32 @@
   <connection>
    <sender>nextOccurrenceButton</sender>
    <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>nextOccurrence()</slot>
+   <receiver>filesContent</receiver>
+   <slot>establishNextOccurrence()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>716</x>
      <y>478</y>
     </hint>
     <hint type="destinationlabel">
-     <x>413</x>
-     <y>311</y>
+     <x>615</x>
+     <y>213</y>
     </hint>
    </hints>
   </connection>
   <connection>
    <sender>prevOccurrenceButton</sender>
    <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>previousOccurrence()</slot>
+   <receiver>filesContent</receiver>
+   <slot>establishPrevOccurrence()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>515</x>
      <y>478</y>
     </hint>
     <hint type="destinationlabel">
-     <x>413</x>
-     <y>311</y>
+     <x>615</x>
+     <y>213</y>
     </hint>
    </hints>
   </connection>

@@ -96,12 +96,6 @@ void IndexDriver::indexateAsync(QString const &path)
     globalTaskWatcher.setFuture(indexFuture);
 }
 
-void IndexDriver::sortD(Document &document)
-{
-    document.sort();
-    emit progressChanged(1);
-}
-
 // TODO: better naming
 void IndexDriver::indexateSync(QString const &path)
 {
@@ -121,7 +115,7 @@ void IndexDriver::indexateSync(QString const &path)
         emit finishedIndexing("interrupted");
         return;
     }
-    emit determinedFilesAmount(static_cast<long long>(documents.size()));
+    emit determinedFilesAmount(static_cast<long long>(documents.size() * 2));
     qDebug() << "Documents:" << documents.size();
     using namespace std::placeholders;
     auto activatedUnwrapTrigrams = std::bind(

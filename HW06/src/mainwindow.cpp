@@ -7,8 +7,7 @@
 #include <iostream>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), occurrenceIndex(-1), ui(new Ui::MainWindow),
-      currentDir("."), currentWordPositionsInFile(), currentFileName("")
+    : QMainWindow(parent), ui(new Ui::MainWindow), currentDir(".")
 {
     ui->setupUi(this);
     ui->label->setText("Current dir: " + QDir(".").canonicalPath());
@@ -29,7 +28,6 @@ MainWindow::MainWindow(QWidget *parent)
             SLOT(setProgressBarLimit(qint64)));
     connect(&worker, SIGNAL(progressChanged(qint64)), this,
             SLOT(changeProgressBarValue(qint64)));
-    defaultCursor = ui->filesContent->textCursor();
     ui->filesContent->setCursorWidth(0);
     ui->filesContent->setAcceptRichText(false);
     emit indexate(".");
@@ -41,57 +39,24 @@ void MainWindow::findSubstring()
     if (currentWord.size() == 0) {
         return;
     }
+    ui->filesContent->setWordSize(currentWord.size());
     worker.findSubstringAsync(currentWord);
-    currentWordPositionsInFile.clear();
+    ui->filesContent->flush();
     ui->filesWidget->clear();
-}
-
-void MainWindow::renderText()
-{
-    if (currentFileName == "") {
-        return;
-    }
-    ui->filesContent->setTextCursor(defaultCursor);
-
-    QTextCharFormat fmt;
-    fmt.setBackground(QColor{200, 100, 100, 255});
-    ui->filesContent->textCursor().clearSelection();
-    qDebug() << "size:" << currentWordPositionsInFile.size();
-    //    size_t i = 0;
-
-    QTextCursor cursor(ui->filesContent->textCursor());
-    for (size_t position : currentWordPositionsInFile) {
-        //        ++i;
-        //        qDebug() << "want to render" << i;
-        QTextCursor cursor(ui->filesContent->textCursor());
-        cursor.setPosition(static_cast<int>(position), QTextCursor::MoveAnchor);
-        cursor.setPosition(static_cast<int>(position) + currentWord.size(),
-                           QTextCursor::KeepAnchor);
-        cursor.setCharFormat(fmt);
-        QApplication::processEvents();
-    }
-    ui->filesContent->setTextCursor(cursor);
-    QApplication::processEvents();
-    occurrenceIndex = 0;
 }
 
 void MainWindow::getFileContent(QListWidgetItem *item)
 {
-    qInfo() << "Opening" << item->text();
-    currentFileName = QDir(currentDir).absoluteFilePath(item->text());
-
-    QFile file(currentFileName);
-    file.open(QFile::ReadOnly);
-    ui->filesContent->clear();
-    ui->filesContent->document()->setPlainText(file.readAll());
-    file.close();
+    QString filename = QDir(currentDir).absoluteFilePath(item->text());
+    qInfo() << "Opening" << filename;
     ui->currentFileLabel->setText("Opened file: " +
-                                  QFileInfo(currentFileName).fileName());
+                                  QFileInfo(filename).fileName());
+    ui->filesContent->loadText(QDir(currentDir).absoluteFilePath(filename));
+    ui->filesContent->setWordSize(currentWord.size());
     qDebug() << "Positions started!";
-    currentWordPositionsInFile =
-        worker.getFileStat(currentFileName, currentWord);
-    qDebug() << "Positions found!" << currentWordPositionsInFile.size();
-    renderText();
+    ui->filesContent->setWordPositions(
+        worker.getFileStat(filename, currentWord));
+    ui->filesContent->renderText();
 }
 
 void MainWindow::changeDirectory()
@@ -105,42 +70,6 @@ void MainWindow::changeDirectory()
         currentDir = QDir(dir).absolutePath();
         ui->label->setText("Current dir: " + currentDir);
     }
-}
-
-void MainWindow::highlightSpecificOccurrence()
-{
-    QTextCursor textCursor(ui->filesContent->textCursor());
-    int position = static_cast<int>(
-        currentWordPositionsInFile[static_cast<size_t>(occurrenceIndex)]);
-    textCursor.setPosition(position, QTextCursor::MoveAnchor);
-    textCursor.setPosition(position + currentWord.size(),
-                           QTextCursor::KeepAnchor);
-    ui->filesContent->setTextCursor(textCursor);
-}
-
-void MainWindow::nextOccurrence()
-{
-    if (occurrenceIndex == -1) {
-        return;
-    }
-
-    occurrenceIndex =
-        static_cast<qsizetype>(static_cast<size_t>(occurrenceIndex + 1) %
-                               currentWordPositionsInFile.size());
-    highlightSpecificOccurrence();
-}
-
-void MainWindow::previousOccurrence()
-{
-    if (occurrenceIndex == -1) {
-        return;
-    }
-
-    occurrenceIndex = static_cast<qsizetype>(
-        static_cast<size_t>(static_cast<size_t>(occurrenceIndex) +
-                            currentWordPositionsInFile.size() - 1) %
-        currentWordPositionsInFile.size());
-    highlightSpecificOccurrence();
 }
 
 MainWindow::~MainWindow() { worker.interrupt(); }
@@ -182,15 +111,17 @@ void MainWindow::getOccurrence(QString const &newFile)
     //    NOTE: better to keep above lines commented, otherwise program
     //    performance is much slower
     ui->filesWidget->addItem(QDir(currentDir).relativeFilePath(newFile));
-    if (newFile == currentFileName) {
-        if (QFileInfo(currentFileName).size() < 3000000) {
-            currentWordPositionsInFile =
-                worker.getFileStat(currentFileName, currentWord);
-            renderText();
+    if (newFile == ui->filesContent->getCurrentFilename()) {
+        if (QFileInfo(ui->filesContent->getCurrentFilename()).size() > 800000 &&
+            currentWord.size() < 3) {
+            ui->statusbar->showMessage(
+                "File is too big to render it; Try to use bigger patterns");
         } else {
-            qDebug() << "dont want to render";
-            ui->filesContent->setText(
-                "Sorry, but your file is too big to display it");
+            qDebug() << "Here!";
+            ui->filesContent->setWordPositions(worker.getFileStat(
+                ui->filesContent->getCurrentFilename(), currentWord));
+            ui->filesContent->setWordSize(currentWord.size());
+            ui->filesContent->renderText();
         }
     }
 }
@@ -210,18 +141,19 @@ void MainWindow::changeProgressBarValue(qint64 delta)
 
 void MainWindow::openFileManager()
 {
-    if (currentFileName == "") {
+    if (ui->filesContent->getCurrentFilename() == "") {
         return;
     }
-    QDesktopServices::openUrl(QFileInfo(currentFileName).absoluteDir().path());
+    QDesktopServices::openUrl(
+        QFileInfo(ui->filesContent->getCurrentFilename()).absoluteDir().path());
 }
 
 void MainWindow::openEditor()
 {
-    if (currentFileName == "") {
+    if (ui->filesContent->getCurrentFilename() == "") {
         return;
     }
-    QDesktopServices::openUrl(currentFileName);
+    QDesktopServices::openUrl(ui->filesContent->getCurrentFilename());
 }
 
 void MainWindow::stopActions() { worker.interrupt(); }

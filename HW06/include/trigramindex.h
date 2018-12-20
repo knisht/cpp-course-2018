@@ -306,6 +306,7 @@ public:
             if (nonTrivial(candidateDocuments[i])) {
                 this->documents.push_back({});
                 swap(this->documents.back(), candidateDocuments[i]);
+                std::invoke(context.callOnSuccess, context.caller, 1);
             }
         }
     }
