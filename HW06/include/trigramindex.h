@@ -101,9 +101,8 @@ public:
         std::unordered_set<Trigram, Trigram::TrigramHash> targetTrigrams;
         for (size_t i = 0;
              i < target.size() - 2 && !(context.isTaskCancelled()); ++i) {
-            targetTrigrams.insert({&target.c_str()[i]});
+            targetTrigrams.insert({&target[i]});
         }
-
         std::vector<size_t> result;
         for (size_t i = 0; i < documents.size(); ++i) {
             bool containsAll = true;

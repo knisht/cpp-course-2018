@@ -111,19 +111,21 @@ void MainWindow::getOccurrence(QString const &newFile)
     //    NOTE: better to keep above lines commented, otherwise program
     //    performance is much slower
     ui->filesWidget->addItem(QDir(currentDir).relativeFilePath(newFile));
-    if (newFile == ui->filesContent->getCurrentFilename()) {
-        if (QFileInfo(ui->filesContent->getCurrentFilename()).size() > 800000 &&
-            currentWord.size() < 3) {
-            ui->statusbar->showMessage(
-                "File is too big to render it; Try to use bigger patterns");
-        } else {
-            qDebug() << "Here!";
-            ui->filesContent->setWordPositions(worker.getFileStat(
-                ui->filesContent->getCurrentFilename(), currentWord));
-            ui->filesContent->setWordSize(currentWord.size());
-            ui->filesContent->renderText();
-        }
-    }
+    //    if (newFile == ui->filesContent->getCurrentFilename()) {
+    //        if (QFileInfo(ui->filesContent->getCurrentFilename()).size() >
+    //        800000 &&
+    //            currentWord.size() < 3) {
+    //            ui->statusbar->showMessage(
+    //                "File is too big to render it; Try to use bigger
+    //                patterns");
+    //        } else {
+    //            qDebug() << "Here!";
+    //            ui->filesContent->setWordPositions(worker.getFileStat(
+    //                ui->filesContent->getCurrentFilename(), currentWord));
+    //            ui->filesContent->setWordSize(currentWord.size());
+    //            ui->filesContent->renderText();
+    //        }
+    //    }
 }
 
 void MainWindow::setProgressBarLimit(qint64 limit)

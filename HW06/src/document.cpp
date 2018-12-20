@@ -38,8 +38,9 @@ void Document::add(Trigram const &trigram)
 
 bool Document::contains(Trigram const &trigram)
 {
-    return *(std::lower_bound(trigramOccurrences.begin(),
-                              trigramOccurrences.end(), trigram)) == trigram;
+    auto result = std::lower_bound(trigramOccurrences.begin(),
+                                   trigramOccurrences.end(), trigram);
+    return result != trigramOccurrences.end() && *(result) == trigram;
 }
 
 void Document::sort()
