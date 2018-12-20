@@ -51,23 +51,27 @@ void MainWindow::renderText()
     if (currentFileName == "") {
         return;
     }
-    QFile file(currentFileName);
-    file.open(QFile::ReadOnly);
-    ui->filesContent->clear();
     ui->filesContent->setTextCursor(defaultCursor);
-    ui->filesContent->document()->setPlainText(file.readAll());
-    file.close();
+
     QTextCharFormat fmt;
     fmt.setBackground(QColor{200, 100, 100, 255});
     ui->filesContent->textCursor().clearSelection();
+    qDebug() << "size:" << currentWordPositionsInFile.size();
+    //    size_t i = 0;
+
+    QTextCursor cursor(ui->filesContent->textCursor());
     for (size_t position : currentWordPositionsInFile) {
+        //        ++i;
+        //        qDebug() << "want to render" << i;
         QTextCursor cursor(ui->filesContent->textCursor());
         cursor.setPosition(static_cast<int>(position), QTextCursor::MoveAnchor);
         cursor.setPosition(static_cast<int>(position) + currentWord.size(),
                            QTextCursor::KeepAnchor);
         cursor.setCharFormat(fmt);
-        ui->filesContent->setTextCursor(cursor);
+        QApplication::processEvents();
     }
+    ui->filesContent->setTextCursor(cursor);
+    QApplication::processEvents();
     occurrenceIndex = 0;
 }
 
@@ -75,6 +79,12 @@ void MainWindow::getFileContent(QListWidgetItem *item)
 {
     qInfo() << "Opening" << item->text();
     currentFileName = QDir(currentDir).absoluteFilePath(item->text());
+
+    QFile file(currentFileName);
+    file.open(QFile::ReadOnly);
+    ui->filesContent->clear();
+    ui->filesContent->document()->setPlainText(file.readAll());
+    file.close();
     ui->currentFileLabel->setText("Opened file: " +
                                   QFileInfo(currentFileName).fileName());
     qDebug() << "Positions started!";
@@ -178,6 +188,7 @@ void MainWindow::getOccurrence(QString const &newFile)
                 worker.getFileStat(currentFileName, currentWord);
             renderText();
         } else {
+            qDebug() << "dont want to render";
             ui->filesContent->setText(
                 "Sorry, but your file is too big to display it");
         }

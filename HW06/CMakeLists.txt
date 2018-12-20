@@ -39,6 +39,8 @@ add_executable(librarian
     ${INCLUDE_DIR}/indexdriver.h
     ${INCLUDE_DIR}/trigram.h
     ${INCLUDE_DIR}/taskcontext.h
+    ${INCLUDE_DIR}/textviewdriver.h
+    ${SOURCE_DIR}/textviewdriver.cpp
     ${SOURCE_DIR}/trigram.cpp
     ${SOURCE_DIR}/document.cpp
     ${SOURCE_DIR}/main.cpp

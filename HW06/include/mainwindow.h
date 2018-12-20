@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include "indexdriver.h"
+#include "textviewdriver.h"
 #include <QDebug>
 #include <QListWidgetItem>
 #include <QMainWindow>
@@ -48,6 +49,7 @@ signals:
 private:
     void renderText();
     void highlightSpecificOccurrence();
+    void rtxt(QTextCharFormat);
 
     qsizetype occurrenceIndex;
     IndexDriver worker;
@@ -55,6 +57,7 @@ private:
     QString currentDir;
     std::vector<size_t> currentWordPositionsInFile;
     QTextCursor defaultCursor;
+    TextViewDriver textDriver;
     QString currentFileName;
     QString currentWord;
 };
