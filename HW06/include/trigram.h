@@ -11,11 +11,11 @@ struct Trigram {
 
     Trigram(uint32_t code);
 
-    Trigram(Trigram const &other);
-    Trigram &operator=(Trigram const &other);
+    //    Trigram(Trigram const &other);
+    //    Trigram &operator=(Trigram const &other);
 
-    Trigram(Trigram &&other);
-    Trigram &operator=(Trigram &&other);
+    //    Trigram(Trigram &&other);
+    //    Trigram &operator=(Trigram &&other);
 
     friend bool operator<(Trigram const &a, Trigram const &b);
 

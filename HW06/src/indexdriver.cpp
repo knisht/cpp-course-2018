@@ -46,11 +46,11 @@ void IndexDriver::findSubstringAsync(QString const &substring)
 {
     interrupt();
     QFuture<void> indexFuture =
-        QtConcurrent::run(this, &IndexDriver::findSubstringSingular, substring);
+        QtConcurrent::run(this, &IndexDriver::findSubstringSync, substring);
     globalTaskWatcher.setFuture(indexFuture);
 }
 
-void IndexDriver::findSubstringSingular(QString const &substring)
+void IndexDriver::findSubstringSync(QString const &substring)
 {
     size_t validTransactionalId = ++transactionalId;
     TaskContext<IndexDriver, qsizetype> currentContext{
@@ -72,7 +72,7 @@ void IndexDriver::findSubstringSingular(QString const &substring)
     qInfo() << "Finding of" << substring << "finished in" << timer.elapsed()
             << "ms";
     if (currentContext.isTaskCancelled()) {
-        emit finishedFinding("interrupted");
+        emit finishedFinding("Interrupted");
     } else {
         emit finishedFinding("");
     }
@@ -92,7 +92,7 @@ void IndexDriver::indexateAsync(QString const &path)
 {
     interrupt();
     QFuture<void> indexFuture =
-        QtConcurrent::run(this, &IndexDriver::indexSingular, path);
+        QtConcurrent::run(this, &IndexDriver::indexateSync, path);
     globalTaskWatcher.setFuture(indexFuture);
 }
 
@@ -103,7 +103,7 @@ void IndexDriver::sortD(Document &document)
 }
 
 // TODO: better naming
-void IndexDriver::indexSingular(QString const &path)
+void IndexDriver::indexateSync(QString const &path)
 {
     size_t validTransactionalId = ++transactionalId;
     TaskContext<IndexDriver, qsizetype> currentContext{
@@ -157,10 +157,6 @@ void IndexDriver::indexSingular(QString const &path)
     //    qDebug() << "Different Trigrams" << trigrams.size();
     //    qDebug() << "Ascii from them" << ascii_cnt;
     //    auto processedSort = std::bind(&IndexDriver::sortD, this, _1);
-    //    QFuture<void> sortJob = QtConcurrent::map(
-    //        index.documents.begin(), index.documents.end(), processedSort);
-    //    currentTaskWatcher.setFuture(sortJob);
-    //    sortJob.waitForFinished();
     //        for (Document const &document :
     //    index.getDocuments()) {
     //        watcher.addPath(document.filename);

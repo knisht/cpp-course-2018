@@ -42,8 +42,8 @@ private slots:
     void processChangedDirectory(const QString &);
 
 private:
-    void indexSingular(QString const &path);
-    void findSubstringSingular(QString const &substring);
+    void indexateSync(QString const &path);
+    void findSubstringSync(QString const &substring);
     void sortD(Document &document);
 
     QFutureWatcher<void> globalTaskWatcher;

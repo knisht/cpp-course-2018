@@ -14,7 +14,7 @@ Trigram::Trigram(std::string str)
     trigram_code[1] = str[1];
     trigram_code[2] = str[2];
 }
-// TODO: flush prograss bar when start indexing
+
 Trigram::Trigram(uint32_t code)
 {
     trigram_code[0] = static_cast<char>(code & ((1 << 8) - 1));
@@ -22,35 +22,35 @@ Trigram::Trigram(uint32_t code)
     trigram_code[2] = static_cast<char>((code >> 16) & ((1 << 8) - 1));
 }
 
-Trigram::Trigram(Trigram const &other)
-{
-    trigram_code[0] = other.trigram_code[0];
-    trigram_code[1] = other.trigram_code[1];
-    trigram_code[2] = other.trigram_code[2];
-}
+// Trigram::Trigram(Trigram const &other)
+//{
+//    trigram_code[0] = other.trigram_code[0];
+//    trigram_code[1] = other.trigram_code[1];
+//    trigram_code[2] = other.trigram_code[2];
+//}
 
-Trigram &Trigram::operator=(Trigram const &other)
-{
-    trigram_code[0] = other.trigram_code[0];
-    trigram_code[1] = other.trigram_code[1];
-    trigram_code[2] = other.trigram_code[2];
-    return *this;
-}
+// Trigram &Trigram::operator=(Trigram const &other)
+//{
+//    trigram_code[0] = other.trigram_code[0];
+//    trigram_code[1] = other.trigram_code[1];
+//    trigram_code[2] = other.trigram_code[2];
+//    return *this;
+//}
 
-Trigram::Trigram(Trigram &&other)
-{
-    trigram_code[0] = other.trigram_code[0];
-    trigram_code[1] = other.trigram_code[1];
-    trigram_code[2] = other.trigram_code[2];
-}
+// Trigram::Trigram(Trigram &&other)
+//{
+//    trigram_code[0] = other.trigram_code[0];
+//    trigram_code[1] = other.trigram_code[1];
+//    trigram_code[2] = other.trigram_code[2];
+//}
 
-Trigram &Trigram::operator=(Trigram &&other)
-{
-    trigram_code[0] = other.trigram_code[0];
-    trigram_code[1] = other.trigram_code[1];
-    trigram_code[2] = other.trigram_code[2];
-    return *this;
-}
+// Trigram &Trigram::operator=(Trigram &&other)
+//{
+//    trigram_code[0] = other.trigram_code[0];
+//    trigram_code[1] = other.trigram_code[1];
+//    trigram_code[2] = other.trigram_code[2];
+//    return *this;
+//}
 
 bool operator<(Trigram const &a, Trigram const &b)
 {

@@ -10,6 +10,7 @@
 #include <QString>
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <unordered_set>
 #include <vector>
 
@@ -173,6 +174,7 @@ public:
                     ++numchars;
                 }
             }
+            // TODO: fix bug w/ large file rendering
             result.push_back(numchars);
             occurrencePosition = std::search(++occurrencePosition,
                                              buf.begin() + blockSize, target);
@@ -190,13 +192,13 @@ public:
             size_t receivedBytes = static_cast<size_t>(fileInstance.read(
                 &buf[blockSize], static_cast<qint64>(blockSize)));
             fileSize -= receivedBytes;
-
             lastOccurrencePosition =
                 buf.begin() + static_cast<qint64>(blockSize - target_size);
+            auto limit =
+                buf.begin() + static_cast<ptrdiff_t>(blockSize + receivedBytes);
             occurrencePosition = std::search(
-                buf.begin() + blockSize - target_size, buf.end(), target);
-            while (occurrencePosition != buf.end() &&
-                   !context.isTaskCancelled()) {
+                buf.begin() + blockSize - target_size, limit, target);
+            while (occurrencePosition != limit && !context.isTaskCancelled()) {
                 for (; lastOccurrencePosition < occurrencePosition;
                      ++lastOccurrencePosition) {
                     if (is_unicode_independent(*lastOccurrencePosition)) {
@@ -205,7 +207,7 @@ public:
                 }
                 result.push_back(numchars);
                 occurrencePosition =
-                    std::search(++occurrencePosition, buf.end(), target);
+                    std::search(++occurrencePosition, limit, target);
             }
 
             for (; lastOccurrencePosition <

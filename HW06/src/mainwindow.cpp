@@ -80,7 +80,7 @@ void MainWindow::getFileContent(QListWidgetItem *item)
     qDebug() << "Positions started!";
     currentWordPositionsInFile =
         worker.getFileStat(currentFileName, currentWord);
-    qDebug() << "Positions found!";
+    qDebug() << "Positions found!" << currentWordPositionsInFile.size();
     renderText();
 }
 
