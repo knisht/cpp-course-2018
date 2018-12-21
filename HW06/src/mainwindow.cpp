@@ -7,9 +7,12 @@
 #include <iostream>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow), currentDir(".")
+    : QMainWindow(parent), ui(new Ui::MainWindow), currentDir("."),
+      settingsWindow(new SettingsWindow(this)),
+      settings("Zeron software", "Librarian")
 {
     ui->setupUi(this);
+    setWindowTitle("Librarian");
     ui->label->setText("Current dir: " + QDir(".").canonicalPath());
     connect(this, SIGNAL(indexate(QString const &)), &worker,
             SLOT(indexateAsync(QString const &)));
@@ -20,14 +23,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&worker, SIGNAL(startedFinding()), this, SLOT(onStartedFinding()));
     connect(&worker, SIGNAL(finishedFinding(QString const &)), this,
             SLOT(onFinishedFinding(QString const &)));
-    connect(this, SIGNAL(findSubstring(QString const &)), &worker,
-            SLOT(findSubstringAsync(QString const &)));
     connect(&worker, SIGNAL(properFileFound(SubstringOccurrence const &)), this,
             SLOT(getOccurrence(SubstringOccurrence const &)));
     connect(&worker, SIGNAL(determinedFilesAmount(qint64)), this,
             SLOT(setProgressBarLimit(qint64)));
     connect(&worker, SIGNAL(progressChanged(qint64)), this,
             SLOT(changeProgressBarValue(qint64)));
+    connect(ui->settingsButton, SIGNAL(clicked()), this, SLOT(showSettings()));
+    connect(settingsWindow.get(), SIGNAL(sendSettings(bool, bool)), this,
+            SLOT(receiveSettings(bool, bool)));
     ui->filesContent->setCursorWidth(0);
     ui->filesContent->setAcceptRichText(false);
     emit indexate(".");
@@ -41,7 +45,9 @@ void MainWindow::findSubstring()
         return;
     }
     ui->filesContent->setWordSize(currentWord.size());
-    worker.findSubstringAsync(currentWord);
+    worker.findSubstringAsync(
+        currentWord,
+        settings.value("behavior/parallelSearch", false).value<bool>());
     ui->filesContent->flush();
     ui->filesWidget->clear();
 }
@@ -117,21 +123,20 @@ void MainWindow::getOccurrence(SubstringOccurrence const &newFile)
         ui->filesWidget->addItem(
             QDir(currentDir).relativeFilePath(newFile.filename));
     }
-    //    if (newFile == ui->filesContent->getCurrentFilename()) {
-    //        if (QFileInfo(ui->filesContent->getCurrentFilename()).size() >
-    //        800000 &&
-    //            currentWord.size() < 3) {
-    //            ui->statusbar->showMessage(
-    //                "File is too big to render it; Try to use bigger
-    //                patterns");
-    //        } else {
-    //            qDebug() << "Here!";
-    //            ui->filesContent->setWordPositions(worker.getFileStat(
-    //                ui->filesContent->getCurrentFilename(), currentWord));
-    //            ui->filesContent->setWordSize(currentWord.size());
-    //            ui->filesContent->renderText();
-    //        }
-    //    }
+    if (settings.value("behavior/liveColoring").value<bool>() &&
+        newFile.filename == ui->filesContent->getCurrentFilename()) {
+        if (QFileInfo(ui->filesContent->getCurrentFilename()).size() > 800000 &&
+            currentWord.size() < 3) {
+            ui->statusbar->showMessage(
+                "File is too big to render it; Try to use bigger patterns");
+        } else {
+            qDebug() << "Here!";
+            ui->filesContent->setWordPositions(worker.getFileStat(
+                ui->filesContent->getCurrentFilename(), currentWord));
+            ui->filesContent->setWordSize(currentWord.size());
+            ui->filesContent->renderText();
+        }
+    }
 }
 
 void MainWindow::setProgressBarLimit(qint64 limit)
@@ -145,6 +150,12 @@ void MainWindow::changeProgressBarValue(qint64 delta)
 {
     ui->progressBar->setValue(
         static_cast<int>(ui->progressBar->value() + delta));
+}
+
+void MainWindow::receiveSettings(bool asyncSearch, bool liveColoring)
+{
+    settings.setValue("behavior/parallelSearch", asyncSearch);
+    settings.setValue("behavior/liveColoring", liveColoring);
 }
 
 void MainWindow::openFileManager()
@@ -165,3 +176,11 @@ void MainWindow::openEditor()
 }
 
 void MainWindow::stopActions() { worker.interrupt(); }
+
+void MainWindow::showSettings()
+{
+    settingsWindow->show();
+    settingsWindow->setValues(
+        settings.value("behavior/parallelSearch", false).value<bool>(),
+        settings.value("behavior/liveColoring", false).value<bool>());
+}

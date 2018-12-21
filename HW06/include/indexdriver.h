@@ -36,7 +36,7 @@ signals:
 
 public slots:
     void indexateAsync(QString const &path);
-    void findSubstringAsync(QString const &substring);
+    void findSubstringAsync(QString const &substring, bool parallelSearch);
 
 private slots:
     void processChangedFile(const QString &);
@@ -44,7 +44,7 @@ private slots:
 
 private:
     void indexateSync(QString const &path);
-    void findSubstringSync(QString const &substring);
+    void findSubstringSync(QString const &substring, bool parallelSearch);
 
     QFutureWatcher<void> globalTaskWatcher;
     QFutureWatcher<void> currentTaskWatcher;

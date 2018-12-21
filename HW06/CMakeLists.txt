@@ -40,6 +40,7 @@ add_executable(librarian
     ${INCLUDE_DIR}/trigram.h
     ${INCLUDE_DIR}/taskcontext.h
     ${INCLUDE_DIR}/textviewdriver.h
+    ${INCLUDE_DIR}/settingswindow.h
     ${SOURCE_DIR}/textviewdriver.cpp
     ${SOURCE_DIR}/trigram.cpp
     ${SOURCE_DIR}/document.cpp
@@ -48,6 +49,8 @@ add_executable(librarian
     ${SOURCE_DIR}/trigramindex.cpp
     ${SOURCE_DIR}/indexdriver.cpp
     ${SOURCE_DIR}/mainwindow.ui
+    ${SOURCE_DIR}/settingswindow.ui
+    ${SOURCE_DIR}/settingswindow.cpp
     )
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)

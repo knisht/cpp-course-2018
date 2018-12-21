@@ -43,15 +43,17 @@ void IndexDriver::catchProperFile(QString const &occurrence, size_t sender_id)
     }
 }
 
-void IndexDriver::findSubstringAsync(QString const &substring)
+void IndexDriver::findSubstringAsync(QString const &substring,
+                                     bool parallelSearch)
 {
     interrupt();
-    QFuture<void> indexFuture =
-        QtConcurrent::run(this, &IndexDriver::findSubstringSync, substring);
+    QFuture<void> indexFuture = QtConcurrent::run(
+        this, &IndexDriver::findSubstringSync, substring, parallelSearch);
     globalTaskWatcher.setFuture(indexFuture);
 }
 
-void IndexDriver::findSubstringSync(QString const &substring)
+void IndexDriver::findSubstringSync(QString const &substring,
+                                    bool parallelSearch)
 {
     size_t validTransactionalId = ++transactionalId;
     TaskContext<IndexDriver, qsizetype> currentContext{
@@ -69,14 +71,18 @@ void IndexDriver::findSubstringSync(QString const &substring)
         return;
     }
     emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
-    TrigramIndex::Searcher searcher(stdTarget);
-
-    using namespace std::placeholders;
-    auto preparedFunc = [&](size_t fileId) {
-        index.findOccurrencesInFile(fileId, searcher, catcherContext);
-    };
-    QtConcurrent::blockingMap(fileIds.begin(), fileIds.end(), preparedFunc);
-    //    index.findOccurrencesInFiles(fileIds, stdTarget, catcherContext);
+    if (parallelSearch) {
+        TrigramIndex::Searcher searcher(stdTarget);
+        using namespace std::placeholders;
+        auto preparedFunc = [&](size_t fileId) {
+            index.findOccurrencesInFile(fileId, searcher, catcherContext);
+        };
+        currentTaskWatcher.setFuture(
+            QtConcurrent::map(fileIds.begin(), fileIds.end(), preparedFunc));
+        currentTaskWatcher.waitForFinished();
+    } else {
+        index.findOccurrencesInFiles(fileIds, stdTarget, catcherContext);
+    }
     qInfo() << "Finding of" << substring << "finished in" << timer.elapsed()
             << "ms";
     if (currentContext.isTaskCancelled()) {

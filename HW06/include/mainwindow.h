@@ -2,13 +2,13 @@
 #define MAINWINDOW_H
 
 #include "indexdriver.h"
+#include "settingswindow.h"
 #include "textviewdriver.h"
 #include <QDebug>
 #include <QListWidgetItem>
 #include <QMainWindow>
 #include <QTextCursor>
 #include <QThread>
-
 namespace Ui
 {
 
@@ -32,12 +32,14 @@ public slots:
     void stopActions();
     void openFileManager();
     void openEditor();
+    void receiveSettings(bool asyncSearch, bool liveColoring);
 
 private slots:
     void onStartedIndexing();
     void onFinishedIndexing(QString const &);
     void onStartedFinding();
     void onFinishedFinding(QString const &);
+    void showSettings();
 
 signals:
     void indexate(QString const &path);
@@ -50,8 +52,10 @@ private:
 
     IndexDriver worker;
     std::unique_ptr<Ui::MainWindow> ui;
+    std::unique_ptr<SettingsWindow> settingsWindow;
     QString currentDir;
     QString currentWord;
+    QSettings settings;
 };
 
 #endif // MAINWINDOW_H
