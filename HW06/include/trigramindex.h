@@ -119,23 +119,32 @@ public:
         return result;
     }
 
+    struct Searcher {
+        std::boyer_moore_searcher<std::string::const_iterator> core_searcher;
+        size_t patternSize;
+    };
+
     template <typename T>
     void
     findOccurrencesInFiles(std::vector<size_t> fileIds,
                            std::string const &target,
                            TaskContext<T, QString const &, size_t> &context)
     {
-        std::boyer_moore_searcher processed_target(target.begin(),
-                                                   target.end());
+        Searcher searcher{
+            std::boyer_moore_searcher<std::string::const_iterator>(
+                target.begin(), target.end()),
+            target.size()};
         std::vector<QString> result;
         for (size_t i = 0; i < fileIds.size(); ++i) {
             if (context.isTaskCancelled()) {
                 return;
             }
-            std::vector<size_t> vec =
-                findExactOccurrences(documents[fileIds[i]].filename,
-                                     processed_target, target.size(), context);
-            if (vec.size() > 0) {
+
+            //            std::vector<size_t> vec = collectAllOccurrences(
+            //                documents[fileIds[i]].filename, searcher,
+            //                context);
+            if (occurrenceExist(documents[fileIds[i]].filename, searcher,
+                                context)) {
                 std::invoke(context.callOnSuccess, context.caller,
                             documents[fileIds[i]].filename,
                             context.transactionalId);
@@ -143,90 +152,56 @@ public:
         }
     }
 
-    template <typename T, typename Q>
-    static std::vector<size_t> findExactOccurrences(
-        QString const &doc, std::boyer_moore_searcher<Q> target,
-        size_t target_size, TaskContext<T, QString const &, size_t> &context)
+    template <typename T>
+    std::vector<size_t>
+    collectAllOccurrences(QString const &filename, Searcher const &searcher,
+                          TaskContext<T, QString const &, size_t> &context)
     {
-        QFile fileInstance(doc);
-        fileInstance.open(QFile::ReadOnly);
-        size_t fileSize = static_cast<size_t>(fileInstance.size());
-        size_t blockSize = std::min(fileSize, static_cast<size_t>(BUF_SIZE));
+        std::vector<size_t> resultPositions;
+        size_t passedUnicodeCharactersAmount = 0;
+        auto collector = [&](std::string::const_iterator &begin,
+                             std::string::const_iterator &end) -> bool {
+            collectUnicodeSymbols(begin, end, passedUnicodeCharactersAmount);
+            resultPositions.push_back(passedUnicodeCharactersAmount);
+            return true;
+        };
 
-        std::string buf(blockSize * 2, '\0');
-        fileInstance.read(&buf[0], static_cast<qint64>(blockSize));
-        fileSize -= blockSize;
-        std::string::iterator lastOccurrencePosition = buf.begin();
-        std::string::iterator occurrencePosition =
-            std::search(buf.begin(), buf.begin() + blockSize, target);
-        size_t numchars = 0;
-        std::vector<size_t> result;
-        // TODO: special processing for words with width 3
-        while (occurrencePosition !=
-               buf.begin() + static_cast<qint64>(blockSize)) {
-            if (context.isTaskCancelled()) {
-                return {};
-            }
-            for (; lastOccurrencePosition < occurrencePosition;
-                 ++lastOccurrencePosition) {
-                if (is_unicode_independent(*lastOccurrencePosition)) {
-                    ++numchars;
-                }
-            }
-            // TODO: fix bug w/ large file rendering
-            result.push_back(numchars);
-            occurrencePosition = std::search(++occurrencePosition,
-                                             buf.begin() + blockSize, target);
-        }
-        for (; lastOccurrencePosition <
-               occurrencePosition - static_cast<qint64>(target_size);
-             ++lastOccurrencePosition) {
-            if (is_unicode_independent(*lastOccurrencePosition)) {
-                ++numchars;
-            }
-        }
-        size_t passed = blockSize;
+        auto finish = [&](std::string::const_iterator &begin,
+                          std::string::const_iterator const &end) -> bool {
+            collectUnicodeSymbols(begin, end, passedUnicodeCharactersAmount);
+            return true;
+        };
+        processSubstringOccurrencesInFile(filename, searcher, collector, finish,
+                                          context);
+        return resultPositions;
+    }
 
-        while (fileSize > 0 && !context.isTaskCancelled()) {
-            size_t receivedBytes = static_cast<size_t>(fileInstance.read(
-                &buf[blockSize], static_cast<qint64>(blockSize)));
-            fileSize -= receivedBytes;
-            lastOccurrencePosition =
-                buf.begin() + static_cast<qint64>(blockSize - target_size);
-            auto limit =
-                buf.begin() + static_cast<ptrdiff_t>(blockSize + receivedBytes);
-            occurrencePosition = std::search(
-                buf.begin() + blockSize - target_size, limit, target);
-            while (occurrencePosition != limit && !context.isTaskCancelled()) {
-                for (; lastOccurrencePosition < occurrencePosition;
-                     ++lastOccurrencePosition) {
-                    if (is_unicode_independent(*lastOccurrencePosition)) {
-                        ++numchars;
-                    }
-                }
-                result.push_back(numchars);
-                occurrencePosition =
-                    std::search(++occurrencePosition, limit, target);
-            }
-
-            for (; lastOccurrencePosition <
-                   occurrencePosition - static_cast<qint64>(target_size);
-                 ++lastOccurrencePosition) {
-                if (is_unicode_independent(*lastOccurrencePosition)) {
-                    ++numchars;
-                }
-            }
-            passed += blockSize;
-            memcpy(&buf[0], &buf[blockSize], blockSize);
-        }
-        fileInstance.close();
-        return result;
+    template <typename T>
+    bool occurrenceExist(QString const &filename, Searcher const &searcher,
+                         TaskContext<T, QString const &, size_t> &context)
+    {
+        bool exist = false;
+        auto checker = [&](std::string::const_iterator &begin [[gnu::unused]],
+                           std::string::const_iterator &end
+                           [[gnu::unused]]) -> bool {
+            exist = true;
+            return false;
+        };
+        auto finish = [&](std::string::const_iterator &begin [[gnu::unused]],
+                          std::string::const_iterator const &end
+                          [[gnu::unused]]) -> bool { return true; };
+        processSubstringOccurrencesInFile(filename, searcher, checker, finish,
+                                          context);
+        return exist;
     }
 
     template <typename T>
     static void unwrapTrigrams(Document &document,
                                TaskContext<T, qsizetype> context)
     {
+        static const qsizetype BUF_SIZE = 1 << 12;
+        // Strange, above line is neccessary for debug build (otherwise it
+        // doesn't compile)
         QFile fileInstance{QFileInfo(document.filename).absoluteFilePath()};
         if (!fileInstance.open(QFile::ReadOnly)) {
             qWarning() << "Could not open" << document.filename
@@ -240,62 +215,53 @@ public:
             std::invoke(context.callOnSuccess, context.caller, 1);
             return;
         }
-
-        static const qint64 BUFF_SIZE = 1 << 12;
-        qsizetype block_size = qMin(fileSize, BUFF_SIZE);
+        qsizetype blockSize = qMin(fileSize, BUF_SIZE);
         std::string bytes;
-        bytes.resize(static_cast<size_t>(block_size + 1), '\0');
-        bytes.back() = '\1';
+        bytes.resize(static_cast<size_t>(blockSize + 1), '\0');
         char last[3];
-        int passed = 0;
+        int processedBytesAmount = 0;
 
-        std::unordered_set<Trigram, Trigram::TrigramHash> trigram_set;
+        std::unordered_set<Trigram, Trigram::TrigramHash> foundTrigrams;
 
         while (fileSize > 0) {
             qint64 receivedBytes =
-                fileInstance.read(&bytes[0], static_cast<qint64>(block_size));
-            bool has_zero =
-                (strlen(&bytes[0]) < static_cast<size_t>(block_size));
-            for (size_t i = 0; i < static_cast<size_t>(receivedBytes) / 4;
-                 ++i) {
-                if (bytes[4 * i] == 0) {
-                    has_zero = true;
-                }
-            }
-            if (has_zero) {
-                document.trigramOccurrences.clear();
+                fileInstance.read(&bytes[0], static_cast<qint64>(blockSize));
+            if (has_zero(&bytes[0], static_cast<size_t>(receivedBytes))) {
+                foundTrigrams.clear();
                 break;
             }
-            if (passed > 0) {
+            if (processedBytesAmount > 0) {
+                // if it is not first iteration
                 last[2] = bytes[0];
-                document.add({last});
+                foundTrigrams.insert({last});
                 char trigramBuf[3] = {last[1], last[2], bytes[1]};
-                document.add({trigramBuf});
+                foundTrigrams.insert({trigramBuf});
             }
             if (receivedBytes > 2) {
                 for (size_t i = 0; i < static_cast<size_t>(receivedBytes) - 2;
                      ++i) {
-                    trigram_set.insert(&bytes[i]);
+                    foundTrigrams.insert(&bytes[i]);
                 }
-                if (trigram_set.size() > 200000) {
-                    qDebug() << "bad" << document.filename;
-                    document.trigramOccurrences.clear();
-                    return;
+                if (foundTrigrams.size() > 200000) {
+                    qDebug()
+                        << document.filename << "is too big for processing";
+                    foundTrigrams.clear();
+                    break;
                 }
-                last[0] = bytes[static_cast<size_t>(block_size) - 2];
-                last[1] = bytes[static_cast<size_t>(block_size) - 1];
+                last[0] = bytes[static_cast<size_t>(blockSize) - 2];
+                last[1] = bytes[static_cast<size_t>(blockSize) - 1];
             }
             fileSize -= receivedBytes;
-            block_size = qMin(block_size, fileSize);
-            ++passed;
+            blockSize = qMin(blockSize, fileSize);
+            ++processedBytesAmount;
         }
-        for (Trigram t : trigram_set) {
+        for (Trigram const &t : foundTrigrams) {
             document.add(t);
         }
         document.sort();
         std::invoke(context.callOnSuccess, context.caller, 1);
     }
-    //    static void unwrapTrigrams(Document &document);
+
     template <typename T>
     void getFilteredDocuments(std::vector<Document> &candidateDocuments,
                               TaskContext<T, qsizetype> &context)
@@ -317,6 +283,75 @@ private:
     void nothing(T)
     {
     }
+
+    template <typename T, typename ProgressFunction, typename FinishFunction>
+    static void processSubstringOccurrencesInFile(
+        QString const &filename, Searcher const &patternSearcher,
+        ProgressFunction progress, FinishFunction finish,
+        TaskContext<T, QString const &, size_t> &context)
+    {
+        QFile fileInstance(filename);
+        fileInstance.open(QFile::ReadOnly);
+        size_t fileSize = static_cast<size_t>(fileInstance.size());
+        size_t blockSize = std::min(fileSize, static_cast<size_t>(BUF_SIZE));
+
+        std::string buffer(blockSize * 2, '\0');
+        fileInstance.read(&buffer[0], static_cast<qint64>(blockSize));
+        fileSize -= blockSize;
+
+        if (!processBuffer(buffer.cbegin(),
+                           buffer.cbegin() + static_cast<qint64>(blockSize),
+                           patternSearcher, progress, finish, context)) {
+            return;
+        }
+        size_t passed = blockSize;
+        while (fileSize > 0 && !context.isTaskCancelled()) {
+            size_t receivedBytes = static_cast<size_t>(fileInstance.read(
+                &buffer[blockSize], static_cast<qint64>(blockSize)));
+            fileSize -= receivedBytes;
+            if (!processBuffer(buffer.cbegin() +
+                                   static_cast<qint64>(
+                                       blockSize - patternSearcher.patternSize),
+                               buffer.cbegin() + static_cast<ptrdiff_t>(
+                                                     blockSize + receivedBytes),
+                               patternSearcher, progress, finish, context)) {
+                return;
+            }
+            passed += blockSize;
+            memcpy(&buffer[0], &buffer[blockSize], blockSize);
+        }
+    }
+
+    template <typename T, typename ProgressFunction, typename FinishFunction>
+    static bool processBuffer(std::string::const_iterator begin,
+                              std::string::const_iterator end,
+                              Searcher const &searcher,
+                              ProgressFunction process, FinishFunction finish,
+                              TaskContext<T, QString const &, size_t> context)
+    {
+        std::string::const_iterator lastOccurrencePosition = begin;
+        std::string::const_iterator currentOccurrencePosition =
+            std::search(begin, end, searcher.core_searcher);
+        while (currentOccurrencePosition != end) {
+            if (context.isTaskCancelled()) {
+                return false;
+            }
+            if (!process(lastOccurrencePosition, currentOccurrencePosition)) {
+                return false;
+            }
+            currentOccurrencePosition = std::search(
+                ++currentOccurrencePosition, end, searcher.core_searcher);
+        }
+        return finish(lastOccurrencePosition,
+                      currentOccurrencePosition - searcher.patternSize);
+    }
+
+    static bool has_zero(char *buf, size_t expected_buf_size);
+
+    static void collectUnicodeSymbols(std::string::const_iterator &begin,
+                                      std::string::const_iterator const &end,
+                                      size_t &collector);
+
     static inline bool is_unicode_independent(char c) noexcept
     {
         return (static_cast<unsigned int>(

@@ -179,12 +179,12 @@ std::vector<size_t> IndexDriver::getFileStat(QString const &filename,
 {
     // TODO: move to trigramindex
     std::string preprocessedPattern = pattern.toStdString();
-    std::boyer_moore_searcher searcher(preprocessedPattern.begin(),
-                                       preprocessedPattern.end());
+    std::boyer_moore_searcher<std::string::const_iterator> searcher(
+        preprocessedPattern.begin(), preprocessedPattern.end());
     TaskContext<IndexDriver, QString const &, size_t> context = {
         transactionalId, this, &IndexDriver::catchProperFile};
-    return index.findExactOccurrences(filename, searcher,
-                                      preprocessedPattern.size(), context);
+    return index.collectAllOccurrences(
+        filename, {searcher, preprocessedPattern.size()}, context);
 }
 
 void IndexDriver::interrupt()

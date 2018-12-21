@@ -74,3 +74,19 @@ const std::vector<Document> &TrigramIndex::getDocuments() const
 {
     return documents;
 }
+
+bool TrigramIndex::has_zero(char *buf, size_t expected_buf_size)
+{
+    return strlen(buf) < expected_buf_size;
+}
+
+void TrigramIndex::collectUnicodeSymbols(std::string::const_iterator &begin,
+                                         std::string::const_iterator const &end,
+                                         size_t &collector)
+{
+    for (; begin < end; ++begin) {
+        if (is_unicode_independent(*begin)) {
+            ++collector;
+        }
+    }
+}
