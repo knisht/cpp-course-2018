@@ -22,8 +22,8 @@ MainWindow::MainWindow(QWidget *parent)
             SLOT(onFinishedFinding(QString const &)));
     connect(this, SIGNAL(findSubstring(QString const &)), &worker,
             SLOT(findSubstringAsync(QString const &)));
-    connect(&worker, SIGNAL(properFileFound(QString const &)), this,
-            SLOT(getOccurrence(QString const &)));
+    connect(&worker, SIGNAL(properFileFound(SubstringOccurrence const &)), this,
+            SLOT(getOccurrence(SubstringOccurrence const &)));
     connect(&worker, SIGNAL(determinedFilesAmount(qint64)), this,
             SLOT(setProgressBarLimit(qint64)));
     connect(&worker, SIGNAL(progressChanged(qint64)), this,
@@ -35,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::findSubstring()
 {
+    qDebug() << "NEW FINDING!!!!";
     currentWord = ui->stringInput->toPlainText();
     if (currentWord.size() == 0) {
         return;
@@ -47,6 +48,7 @@ void MainWindow::findSubstring()
 
 void MainWindow::getFileContent(QListWidgetItem *item)
 {
+    qDebug() << "Catch!";
     QString filename = QDir(currentDir).absoluteFilePath(item->text());
     qInfo() << "Opening" << filename;
     ui->currentFileLabel->setText("Opened file: " +
@@ -105,12 +107,16 @@ void MainWindow::onFinishedFinding(QString const &result)
     }
 }
 
-void MainWindow::getOccurrence(QString const &newFile)
+void MainWindow::getOccurrence(SubstringOccurrence const &newFile)
 {
     //    ui->progressBar->setValue(ui->progressBar->value() + 500);
     //    NOTE: better to keep above lines commented, otherwise program
     //    performance is much slower
-    ui->filesWidget->addItem(QDir(currentDir).relativeFilePath(newFile));
+    //    qDebug() << newFile.id;
+    if (worker.validate(newFile)) {
+        ui->filesWidget->addItem(
+            QDir(currentDir).relativeFilePath(newFile.filename));
+    }
     //    if (newFile == ui->filesContent->getCurrentFilename()) {
     //        if (QFileInfo(ui->filesContent->getCurrentFilename()).size() >
     //        800000 &&

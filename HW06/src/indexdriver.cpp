@@ -36,7 +36,8 @@ void IndexDriver::processChangedDirectory(const QString &path)
 void IndexDriver::catchProperFile(QString const &occurrence, size_t sender_id)
 {
     if (sender_id == transactionalId) {
-        emit properFileFound(occurrence);
+        SubstringOccurrence pair{occurrence, sender_id};
+        emit properFileFound(pair);
     } else {
         qDebug() << "rejected";
     }
@@ -164,6 +165,11 @@ void IndexDriver::indexateSync(QString const &path)
     } else {
         emit finishedIndexing("");
     }
+}
+
+bool IndexDriver::validate(const SubstringOccurrence &occurrence)
+{
+    return transactionalId == occurrence.id;
 }
 
 size_t IndexDriver::getTransactionalId() { return transactionalId; }

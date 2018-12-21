@@ -16,15 +16,14 @@ public:
         qRegisterMetaType<SubstringOccurrence>();
     }
 
-    Q_INVOKABLE SubstringOccurrence(QString const &string,
-                                    std::vector<size_t> vec)
-        : filename(string), occurrences(vec)
+    Q_INVOKABLE SubstringOccurrence(QString const &string, size_t id)
+        : filename(string), id(id)
     {
         qRegisterMetaType<SubstringOccurrence>();
     }
 
     Q_INVOKABLE SubstringOccurrence(SubstringOccurrence const &other)
-        : filename(other.filename), occurrences(other.occurrences)
+        : filename(other.filename), id(other.id)
     {
         qRegisterMetaType<SubstringOccurrence>();
     }
@@ -33,23 +32,17 @@ public:
     {
         qRegisterMetaType<SubstringOccurrence>();
         filename = other.filename;
-        occurrences = other.occurrences;
+        id = other.id;
         return *this;
     }
 
-    Q_INVOKABLE SubstringOccurrence(QString const &filename)
-        : filename(filename), occurrences()
-    {
-        qRegisterMetaType<SubstringOccurrence>();
-    }
-
     QString filename;
-    std::vector<size_t> occurrences;
+    size_t id;
 
     friend bool operator==(SubstringOccurrence const &a,
                            SubstringOccurrence const &b)
     {
-        return a.filename == b.filename && a.occurrences == b.occurrences;
+        return a.id == b.id && a.filename == b.filename;
     }
 };
 

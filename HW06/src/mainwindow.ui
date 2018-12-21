@@ -253,22 +253,6 @@
  <resources/>
  <connections>
   <connection>
-   <sender>filesWidget</sender>
-   <signal>itemDoubleClicked(QListWidgetItem*)</signal>
-   <receiver>MainWindow</receiver>
-   <slot>getFileContent(QListWidgetItem*)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>210</x>
-     <y>282</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>413</x>
-     <y>311</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>changeDirButton</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
@@ -373,6 +357,22 @@
     <hint type="sourcelabel">
      <x>304</x>
      <y>340</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>413</x>
+     <y>311</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>filesWidget</sender>
+   <signal>itemDoubleClicked(QListWidgetItem*)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>getFileContent(QListWidgetItem*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>210</x>
+     <y>282</y>
     </hint>
     <hint type="destinationlabel">
      <x>413</x>

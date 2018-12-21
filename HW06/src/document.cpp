@@ -7,17 +7,17 @@ Document::Document(QString filename) : filename(filename), trigramOccurrences{}
 {
 }
 
-Document::Document(Document const &other)
-    : filename(other.filename), trigramOccurrences(other.trigramOccurrences)
-{
-}
+// Document::Document(Document const &other)
+//    : filename(other.filename), trigramOccurrences(other.trigramOccurrences)
+//{
+//}
 
-Document &Document::operator=(Document const &other)
-{
-    filename = other.filename;
-    trigramOccurrences = other.trigramOccurrences;
-    return *this;
-}
+// Document &Document::operator=(Document const &other)
+//{
+//    filename = other.filename;
+//    trigramOccurrences = other.trigramOccurrences;
+//    return *this;
+//}
 Document::Document(Document &&other)
     : filename(std::move(other.filename)),
       trigramOccurrences(std::move(other.trigramOccurrences))

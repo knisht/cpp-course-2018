@@ -26,7 +26,7 @@ public slots:
     void findSubstring();
     void getFileContent(QListWidgetItem *);
     void changeDirectory();
-    void getOccurrence(QString const &);
+    void getOccurrence(SubstringOccurrence const &);
     void setProgressBarLimit(qint64 limit);
     void changeProgressBarValue(qint64 delta);
     void stopActions();

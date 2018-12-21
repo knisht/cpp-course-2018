@@ -22,6 +22,7 @@ public:
     std::vector<size_t> getFileStat(QString const &filename,
                                     QString const &pattern);
     size_t getTransactionalId();
+    bool validate(SubstringOccurrence const &occurrence);
 
     ~IndexDriver();
 signals:
@@ -29,7 +30,7 @@ signals:
     void finishedIndexing(QString const &exitMessage);
     void startedFinding();
     void finishedFinding(QString const &exitMessage);
-    void properFileFound(QString const &);
+    void properFileFound(SubstringOccurrence const &);
     void determinedFilesAmount(qint64 filesAmount);
     void progressChanged(qint64 amount);
 
