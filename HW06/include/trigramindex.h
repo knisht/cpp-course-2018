@@ -120,35 +120,37 @@ public:
     }
 
     struct Searcher {
+        Searcher(std::string pattern)
+            : core_searcher(pattern.begin(), pattern.end()),
+              patternSize(pattern.size())
+        {
+        }
         std::boyer_moore_searcher<std::string::const_iterator> core_searcher;
         size_t patternSize;
     };
 
     template <typename T>
+    void findOccurrencesInFile(size_t fileId, Searcher const &searcher,
+                               TaskContext<T, QString const &, size_t> &context)
+    {
+        if (occurrenceExist(documents[fileId].filename, searcher, context)) {
+            std::invoke(context.callOnSuccess, context.caller,
+                        documents[fileId].filename, context.transactionalId);
+        }
+    }
+
+    template <typename T>
     void
-    findOccurrencesInFiles(std::vector<size_t> fileIds,
+    findOccurrencesInFiles(std::vector<size_t> const &fileIds,
                            std::string const &target,
                            TaskContext<T, QString const &, size_t> &context)
     {
-        Searcher searcher{
-            std::boyer_moore_searcher<std::string::const_iterator>(
-                target.begin(), target.end()),
-            target.size()};
-        std::vector<QString> result;
-        for (size_t i = 0; i < fileIds.size(); ++i) {
+        Searcher searcher(target);
+        for (size_t fileId : fileIds) {
             if (context.isTaskCancelled()) {
                 return;
             }
-
-            //            std::vector<size_t> vec = collectAllOccurrences(
-            //                documents[fileIds[i]].filename, searcher,
-            //                context);
-            if (occurrenceExist(documents[fileIds[i]].filename, searcher,
-                                context)) {
-                std::invoke(context.callOnSuccess, context.caller,
-                            documents[fileIds[i]].filename,
-                            context.transactionalId);
-            }
+            findOccurrencesInFile(fileId, searcher, context);
         }
     }
 

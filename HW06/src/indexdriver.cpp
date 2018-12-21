@@ -69,7 +69,14 @@ void IndexDriver::findSubstringSync(QString const &substring)
         return;
     }
     emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
-    index.findOccurrencesInFiles(fileIds, stdTarget, catcherContext);
+    TrigramIndex::Searcher searcher(stdTarget);
+
+    using namespace std::placeholders;
+    auto preparedFunc = [&](size_t fileId) {
+        index.findOccurrencesInFile(fileId, searcher, catcherContext);
+    };
+    QtConcurrent::blockingMap(fileIds.begin(), fileIds.end(), preparedFunc);
+    //    index.findOccurrencesInFiles(fileIds, stdTarget, catcherContext);
     qInfo() << "Finding of" << substring << "finished in" << timer.elapsed()
             << "ms";
     if (currentContext.isTaskCancelled()) {
@@ -178,13 +185,10 @@ std::vector<size_t> IndexDriver::getFileStat(QString const &filename,
                                              QString const &pattern)
 {
     // TODO: move to trigramindex
-    std::string preprocessedPattern = pattern.toStdString();
-    std::boyer_moore_searcher<std::string::const_iterator> searcher(
-        preprocessedPattern.begin(), preprocessedPattern.end());
     TaskContext<IndexDriver, QString const &, size_t> context = {
         transactionalId, this, &IndexDriver::catchProperFile};
-    return index.collectAllOccurrences(
-        filename, {searcher, preprocessedPattern.size()}, context);
+    return index.collectAllOccurrences(filename, pattern.toStdString(),
+                                       context);
 }
 
 void IndexDriver::interrupt()
