@@ -12,14 +12,17 @@ SettingsWindow::SettingsWindow(QWidget *parent)
 void SettingsWindow::acceptSettings()
 {
     emit sendSettings(ui->asyncSearchButton->isChecked(),
-                      ui->onlineColoringButton->isChecked());
+                      ui->onlineColoringButton->isChecked(),
+                      ui->fileWatchingButton->isChecked());
     close();
 }
 
-void SettingsWindow::setValues(bool asyncSearch, bool liveColoring)
+void SettingsWindow::setValues(bool asyncSearch, bool liveColoring,
+                               bool fileWatching)
 {
     ui->asyncSearchButton->setChecked(asyncSearch);
     ui->onlineColoringButton->setChecked(liveColoring);
+    ui->fileWatchingButton->setChecked(fileWatching);
 }
 
 SettingsWindow::~SettingsWindow() {}

@@ -41,7 +41,6 @@ void TextViewDriver::renderText()
     QTextCharFormat fmt;
     fmt.setBackground(QColor{0, 204, 0, 200});
     QTextEdit::textCursor().clearSelection();
-    qDebug() << "size:" << currentWordPositionsInFile.size();
 
     QTextCursor cursor(QTextEdit::textCursor());
     cursor.setCharFormat(fmt);

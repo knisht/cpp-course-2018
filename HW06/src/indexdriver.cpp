@@ -9,11 +9,11 @@
 
 IndexDriver::IndexDriver(QObject *parent)
     : QObject(parent), globalTaskWatcher(), index(), transactionalId(0),
-      watcher()
+      fileWatcher()
 {
-    connect(&watcher, SIGNAL(fileChanged(const QString &)), this,
+    connect(&fileWatcher, SIGNAL(fileChanged(const QString &)), this,
             SLOT(processChangedFile(const QString &)));
-    connect(&watcher, SIGNAL(directoryChanged(const QString &)), this,
+    connect(&fileWatcher, SIGNAL(directoryChanged(const QString &)), this,
             SLOT(processChangedDirectory(const QString &)));
 }
 
@@ -21,16 +21,20 @@ IndexDriver::~IndexDriver() { interrupt(); }
 
 void IndexDriver::processChangedFile(const QString &path)
 {
-    //    index.reprocessFile(path);
+    qInfo() << "File changes detected in" << path;
+    TaskContext<IndexDriver, qsizetype> context{
+        transactionalId, this, &IndexDriver::nothing<qsizetype>};
+    index.reprocessFile(path, context);
 }
 
 void IndexDriver::processChangedDirectory(const QString &path)
 {
-    //    qInfo() << "Directory changes detected in" << path;
-    //    auto vec = index.reprocessDirectory(path);
-    //    for (auto filename : vec) {
-    //        watcher.addPath(filename);
-    //    }
+    qInfo() << "Directory changes detected in" << path;
+    TaskContext<IndexDriver, qsizetype> context{
+        transactionalId, this, &IndexDriver::nothing<qsizetype>};
+    for (auto newFilename : index.reprocessDirectory(path, context)) {
+        fileWatcher.addPath(newFilename);
+    }
 }
 
 void IndexDriver::catchProperFile(QString const &occurrence, size_t sender_id)
@@ -38,8 +42,6 @@ void IndexDriver::catchProperFile(QString const &occurrence, size_t sender_id)
     if (sender_id == transactionalId) {
         SubstringOccurrence pair{occurrence, sender_id};
         emit properFileFound(pair);
-    } else {
-        qDebug() << "rejected";
     }
 }
 
@@ -99,26 +101,26 @@ void IndexDriver::increaseProgress(qsizetype delta)
 
 void IndexDriver::setWatchingDirectory(QString const &directory)
 {
-    //    watcher.addPath(directory);
+    fileWatcher.addPath(directory);
 }
 
-void IndexDriver::indexateAsync(QString const &path)
+void IndexDriver::indexateAsync(QString const &path, bool fileWatching)
 {
     interrupt();
     QFuture<void> indexFuture =
-        QtConcurrent::run(this, &IndexDriver::indexateSync, path);
+        QtConcurrent::run(this, &IndexDriver::indexateSync, path, fileWatching);
     globalTaskWatcher.setFuture(indexFuture);
 }
 
-// TODO: better naming
-void IndexDriver::indexateSync(QString const &path)
+void IndexDriver::indexateSync(QString const &path, bool fileWatching)
 {
     size_t validTransactionalId = ++transactionalId;
     TaskContext<IndexDriver, qsizetype> currentContext{
         validTransactionalId, this, &IndexDriver::increaseProgress};
     TaskContext<IndexDriver, QString const &> directoryContext{
-        validTransactionalId, this, &IndexDriver::setWatchingDirectory};
-    //    watcher.addPath(path);
+        validTransactionalId, this,
+        (fileWatching ? &IndexDriver::setWatchingDirectory
+                      : &IndexDriver::nothing<QString const &>)};
     index.flush();
     emit startedIndexing();
     QElapsedTimer timer;
@@ -129,8 +131,8 @@ void IndexDriver::indexateSync(QString const &path)
         emit finishedIndexing("interrupted");
         return;
     }
-    emit determinedFilesAmount(static_cast<long long>(documents.size() * 2));
-    qDebug() << "Documents:" << documents.size();
+    emit determinedFilesAmount(static_cast<long long>(
+        documents.size() * 2 + (fileWatching ? documents.size() : 0)));
     using namespace std::placeholders;
     auto activatedUnwrapTrigrams = std::bind(
         TrigramIndex::unwrapTrigrams<IndexDriver>, _1, currentContext);
@@ -147,32 +149,15 @@ void IndexDriver::indexateSync(QString const &path)
         emit finishedIndexing("interrupted");
         return;
     }
-    //    std::unordered_set<Trigram, Trigram::TrigramHash> trigrams;
-    //    size_t sum = 0;
-    //    size_t ascii_cnt = 0;
-    //    for (Document const &d : index.getDocuments()) {
-    //        sum += d.trigramOccurrences.size();
-    //        for (Trigram t : d.trigramOccurrences) {
-    //            trigrams.insert(t);
-    //            std::string text = t.toString();
-    //            if ((text[0] & (1 << 8)) == 0 && (text[2] & (1 << 8)) == 0 &&
-    //                (text[1] & (1 << 8)) == 0) {
-    //                ++ascii_cnt;
-    //            }
-    //        }
-    //    }
-    //    qDebug() << "all trigrams" << sum;
-    //    qDebug() << "Different Trigrams" << trigrams.size();
-    //    qDebug() << "Ascii from them" << ascii_cnt;
-    //    auto processedSort = std::bind(&IndexDriver::sortD, this, _1);
-    //        for (Document const &document :
-    //    index.getDocuments()) {
-    //        watcher.addPath(document.filename);
-    //        emit increaseProgress(1);
-    //    }
+    if (fileWatching) {
+        fileWatcher.addPath(path);
+        for (Document const &document : index.getDocuments()) {
+            fileWatcher.addPath(document.filename);
+            emit increaseProgress(1);
+        }
+    }
     qInfo() << "Indexing of" << path << "finished in" << timer.elapsed()
             << "ms";
-    qDebug() << "filesize" << index.getDocuments().size();
     if (currentContext.isTaskCancelled()) {
         emit finishedIndexing("interrupted");
     } else {
@@ -190,7 +175,6 @@ size_t IndexDriver::getTransactionalId() { return transactionalId; }
 std::vector<size_t> IndexDriver::getFileStat(QString const &filename,
                                              QString const &pattern)
 {
-    // TODO: move to trigramindex
     TaskContext<IndexDriver, QString const &, size_t> context = {
         transactionalId, this, &IndexDriver::catchProperFile};
     return index.collectAllOccurrences(filename, pattern.toStdString(),
@@ -199,7 +183,6 @@ std::vector<size_t> IndexDriver::getFileStat(QString const &filename,
 
 void IndexDriver::interrupt()
 {
-    qDebug() << "Interrupting";
     ++transactionalId;
     globalTaskWatcher.cancel();
     currentTaskWatcher.cancel();

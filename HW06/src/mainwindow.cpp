@@ -14,8 +14,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle("Librarian");
     ui->label->setText("Current dir: " + QDir(".").canonicalPath());
-    connect(this, SIGNAL(indexate(QString const &)), &worker,
-            SLOT(indexateAsync(QString const &)));
     connect(&worker, SIGNAL(startedIndexing()), this,
             SLOT(onStartedIndexing()));
     connect(&worker, SIGNAL(finishedIndexing(QString const &)), this,
@@ -30,16 +28,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&worker, SIGNAL(progressChanged(qint64)), this,
             SLOT(changeProgressBarValue(qint64)));
     connect(ui->settingsButton, SIGNAL(clicked()), this, SLOT(showSettings()));
-    connect(settingsWindow.get(), SIGNAL(sendSettings(bool, bool)), this,
-            SLOT(receiveSettings(bool, bool)));
+    connect(settingsWindow.get(), SIGNAL(sendSettings(bool, bool, bool)), this,
+            SLOT(receiveSettings(bool, bool, bool)));
     ui->filesContent->setCursorWidth(0);
     ui->filesContent->setAcceptRichText(false);
-    emit indexate(".");
+    indexate(".");
 }
 
 void MainWindow::findSubstring()
 {
-    qDebug() << "NEW FINDING!!!!";
     currentWord = ui->stringInput->toPlainText();
     if (currentWord.size() == 0) {
         return;
@@ -54,14 +51,12 @@ void MainWindow::findSubstring()
 
 void MainWindow::getFileContent(QListWidgetItem *item)
 {
-    qDebug() << "Catch!";
     QString filename = QDir(currentDir).absoluteFilePath(item->text());
     qInfo() << "Opening" << filename;
     ui->currentFileLabel->setText("Opened file: " +
                                   QFileInfo(filename).fileName());
     ui->filesContent->loadText(QDir(currentDir).absoluteFilePath(filename));
     ui->filesContent->setWordSize(currentWord.size());
-    qDebug() << "Positions started!";
     ui->filesContent->setWordPositions(
         worker.getFileStat(filename, currentWord));
     ui->filesContent->renderText();
@@ -74,7 +69,7 @@ void MainWindow::changeDirectory()
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     qInfo() << "Directory chosen:" << dir;
     if (dir != "") {
-        emit indexate(dir);
+        indexate(dir);
         currentDir = QDir(dir).absolutePath();
         ui->label->setText("Current dir: " + currentDir);
     }
@@ -118,7 +113,6 @@ void MainWindow::getOccurrence(SubstringOccurrence const &newFile)
     //    ui->progressBar->setValue(ui->progressBar->value() + 500);
     //    NOTE: better to keep above lines commented, otherwise program
     //    performance is much slower
-    //    qDebug() << newFile.id;
     if (worker.validate(newFile)) {
         ui->filesWidget->addItem(
             QDir(currentDir).relativeFilePath(newFile.filename));
@@ -130,7 +124,6 @@ void MainWindow::getOccurrence(SubstringOccurrence const &newFile)
             ui->statusbar->showMessage(
                 "File is too big to render it; Try to use bigger patterns");
         } else {
-            qDebug() << "Here!";
             ui->filesContent->setWordPositions(worker.getFileStat(
                 ui->filesContent->getCurrentFilename(), currentWord));
             ui->filesContent->setWordSize(currentWord.size());
@@ -152,10 +145,12 @@ void MainWindow::changeProgressBarValue(qint64 delta)
         static_cast<int>(ui->progressBar->value() + delta));
 }
 
-void MainWindow::receiveSettings(bool asyncSearch, bool liveColoring)
+void MainWindow::receiveSettings(bool asyncSearch, bool liveColoring,
+                                 bool fileWatching)
 {
     settings.setValue("behavior/parallelSearch", asyncSearch);
     settings.setValue("behavior/liveColoring", liveColoring);
+    settings.setValue("behavior/fileWatching", fileWatching);
 }
 
 void MainWindow::openFileManager()
@@ -175,6 +170,12 @@ void MainWindow::openEditor()
     QDesktopServices::openUrl(ui->filesContent->getCurrentFilename());
 }
 
+void MainWindow::indexate(QString const &path)
+{
+    worker.indexateAsync(
+        path, settings.value("behavior/fileWatching", false).value<bool>());
+}
+
 void MainWindow::stopActions() { worker.interrupt(); }
 
 void MainWindow::showSettings()
@@ -182,5 +183,6 @@ void MainWindow::showSettings()
     settingsWindow->show();
     settingsWindow->setValues(
         settings.value("behavior/parallelSearch", false).value<bool>(),
-        settings.value("behavior/liveColoring", false).value<bool>());
+        settings.value("behavior/liveColoring", false).value<bool>(),
+        settings.value("behavior/fileWatching", false).value<bool>());
 }

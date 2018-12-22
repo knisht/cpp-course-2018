@@ -41,6 +41,13 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QCheckBox" name="fileWatchingButton">
+         <property name="text">
+          <string>Fetch filesystem changes</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
      <item>

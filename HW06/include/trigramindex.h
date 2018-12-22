@@ -21,8 +21,7 @@ public:
     TrigramIndex(TrigramIndex const &) = delete;
     TrigramIndex &operator=(TrigramIndex const &) = delete;
 
-    void reprocessFile(QString const &filename);
-    std::vector<QString> reprocessDirectory(QString const &dirname);
+    //    std::vector<QString> reprocessDirectory(QString const &dirname);
     const std::vector<Document> &getDocuments() const;
     void printDocuments();
     void flush();
@@ -225,7 +224,7 @@ public:
 
         std::unordered_set<Trigram, Trigram::TrigramHash> foundTrigrams;
 
-        while (fileSize > 0) {
+        while (fileSize > 0 && !context.isTaskCancelled()) {
             qint64 receivedBytes =
                 fileInstance.read(&bytes[0], static_cast<qint64>(blockSize));
             if (has_zero(&bytes[0], static_cast<size_t>(receivedBytes))) {
@@ -276,6 +275,60 @@ public:
                 std::invoke(context.callOnSuccess, context.caller, 1);
             }
         }
+    }
+
+    template <typename T>
+    void reprocessFile(QString const &filename,
+                       TaskContext<T, qsizetype> &context)
+    {
+        for (size_t i = 0; i < documents.size() && !context.isTaskCancelled();
+             ++i) {
+            if (documents[i].filename == filename) {
+                documents[i].trigramOccurrences.clear();
+                documents[i].filename = "";
+                unwrapTrigrams(documents[i], context);
+                return;
+            }
+        }
+    }
+
+    template <typename T>
+    std::vector<QString> reprocessDirectory(QString const &filename,
+                                            TaskContext<T, qsizetype> &context)
+    {
+        QDirIterator dirIterator(filename, QDir::NoFilter | QDir::Hidden |
+                                               QDir::NoDotAndDotDot |
+                                               QDir::NoDotDot);
+        std::vector<Document> documents;
+        std::vector<QString> changedFiles;
+        while (dirIterator.hasNext()) {
+            dirIterator.next();
+            if (!dirIterator.fileInfo().isDir()) {
+                documents.push_back(
+                    Document(QFile(dirIterator.filePath()).fileName()));
+            } else {
+                changedFiles.push_back(
+                    QFileInfo(dirIterator.filePath()).absoluteFilePath());
+            }
+        }
+        std::vector<size_t> realDocuments;
+        for (size_t i = 0; i < documents.size(); ++i) {
+            realDocuments.push_back(i);
+            for (size_t j = 0; j < this->documents.size(); ++j) {
+                if (QFileInfo(documents[i].filename).absoluteFilePath() ==
+                    this->documents[j].filename) {
+                    realDocuments.pop_back();
+                }
+            }
+        }
+        for (size_t docId : realDocuments) {
+            unwrapTrigrams(documents[docId], context);
+            if (documents[docId].trigramOccurrences.size() > 0) {
+                changedFiles.push_back(documents[docId].filename);
+                this->documents.push_back(std::move(documents[docId]));
+            }
+        }
+        return changedFiles;
     }
 
     friend class IndexDriver;

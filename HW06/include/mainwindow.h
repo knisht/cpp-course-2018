@@ -32,7 +32,9 @@ public slots:
     void stopActions();
     void openFileManager();
     void openEditor();
-    void receiveSettings(bool asyncSearch, bool liveColoring);
+    void receiveSettings(bool asyncSearch, bool liveColoring,
+                         bool fileWatching);
+    void indexate(QString const &path);
 
 private slots:
     void onStartedIndexing();
@@ -42,7 +44,6 @@ private slots:
     void showSettings();
 
 signals:
-    void indexate(QString const &path);
     void findSubstring(QString const &substring);
     void interrupt();
 

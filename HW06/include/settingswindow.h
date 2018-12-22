@@ -15,11 +15,11 @@ class SettingsWindow : public QDialog
 
 public:
     explicit SettingsWindow(QWidget *parent = nullptr);
-    void setValues(bool asyncSearch, bool liveColoring);
+    void setValues(bool asyncSearch, bool liveColoring, bool fileWatching);
     ~SettingsWindow();
 
 signals:
-    void sendSettings(bool asyncSearch, bool liveColoring);
+    void sendSettings(bool asyncSearch, bool liveColoring, bool fileWathing);
 
 public slots:
     void acceptSettings();

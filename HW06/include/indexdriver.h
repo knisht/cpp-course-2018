@@ -35,7 +35,7 @@ signals:
     void progressChanged(qint64 amount);
 
 public slots:
-    void indexateAsync(QString const &path);
+    void indexateAsync(QString const &path, bool fileWatching);
     void findSubstringAsync(QString const &substring, bool parallelSearch);
 
 private slots:
@@ -43,14 +43,19 @@ private slots:
     void processChangedDirectory(const QString &);
 
 private:
-    void indexateSync(QString const &path);
+    void indexateSync(QString const &path, bool fileWatching);
     void findSubstringSync(QString const &substring, bool parallelSearch);
+
+    template <typename... Args>
+    void nothing(Args...)
+    {
+    }
 
     QFutureWatcher<void> globalTaskWatcher;
     QFutureWatcher<void> currentTaskWatcher;
     TrigramIndex index;
     std::atomic_size_t transactionalId;
-    QFileSystemWatcher watcher;
+    QFileSystemWatcher fileWatcher;
 };
 
 #endif // INDEXWORKER_H
