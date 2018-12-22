@@ -28,10 +28,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&worker, SIGNAL(progressChanged(qint64)), this,
             SLOT(changeProgressBarValue(qint64)));
     connect(ui->settingsButton, SIGNAL(clicked()), this, SLOT(showSettings()));
-    connect(settingsWindow.get(), SIGNAL(sendSettings(bool, bool, bool)), this,
-            SLOT(receiveSettings(bool, bool, bool)));
+    connect(settingsWindow.get(), SIGNAL(sendSettings(QMap<QString, bool>)),
+            this, SLOT(receiveSettings(QMap<QString, bool>)));
     ui->filesContent->setCursorWidth(0);
     ui->filesContent->setAcceptRichText(false);
+    if (!settings.value("behavior/liveSearching").value<bool>()) {
+        ui->findStringButton->show();
+    } else {
+        ui->findStringButton->hide();
+    }
     indexate(".");
 }
 
@@ -47,7 +52,7 @@ void MainWindow::findSubstring()
     ui->filesContent->setWordSize(currentWord.size());
     worker.findSubstringAsync(
         currentWord,
-        settings.value("behavior/parallelSearch", false).value<bool>());
+        settings.value("behavior/parallelSearching", false).value<bool>());
     ui->filesContent->flush();
     ui->filesWidget->clear();
 }
@@ -153,12 +158,21 @@ void MainWindow::changeProgressBarValue(qint64 delta)
         static_cast<int>(ui->progressBar->value() + delta));
 }
 
-void MainWindow::receiveSettings(bool asyncSearch, bool liveColoring,
-                                 bool fileWatching)
+void MainWindow::receiveSettings(QMap<QString, bool> newSettings)
 {
-    settings.setValue("behavior/parallelSearch", asyncSearch);
-    settings.setValue("behavior/liveColoring", liveColoring);
-    settings.setValue("behavior/fileWatching", fileWatching);
+    settings.setValue("behavior/parallelSearching",
+                      newSettings.value("parallelSearching", false));
+    settings.setValue("behavior/liveColoring",
+                      newSettings.value("liveColoring", false));
+    settings.setValue("behavior/fileWatching",
+                      newSettings.value("fileWatching", false));
+    settings.setValue("behavior/liveSearching",
+                      newSettings.value("liveSearching", false));
+    if (!newSettings["liveSearching"]) {
+        ui->findStringButton->show();
+    } else {
+        ui->findStringButton->hide();
+    }
 }
 
 void MainWindow::openFileManager()
@@ -189,8 +203,21 @@ void MainWindow::stopActions() { worker.interrupt(); }
 void MainWindow::showSettings()
 {
     settingsWindow->show();
-    settingsWindow->setValues(
-        settings.value("behavior/parallelSearch", false).value<bool>(),
-        settings.value("behavior/liveColoring", false).value<bool>(),
-        settings.value("behavior/fileWatching", false).value<bool>());
+    QMap<QString, bool> currentSettings;
+    currentSettings["parallelSearching"] =
+        settings.value("behavior/parallelSearching", false).value<bool>();
+    currentSettings["liveColoring"] =
+        settings.value("behavior/liveColoring", false).value<bool>();
+    currentSettings["fileWatching"] =
+        settings.value("behavior/fileWatching", false).value<bool>();
+    currentSettings["liveSearching"] =
+        settings.value("behavior/liveSearching", false).value<bool>();
+    settingsWindow->setValues(currentSettings);
+}
+
+void MainWindow::catchTextChange()
+{
+    if (settings.value("behavior/liveSearching", false).value<bool>()) {
+        findSubstring();
+    }
 }

@@ -11,18 +11,21 @@ SettingsWindow::SettingsWindow(QWidget *parent)
 
 void SettingsWindow::acceptSettings()
 {
-    emit sendSettings(ui->asyncSearchButton->isChecked(),
-                      ui->onlineColoringButton->isChecked(),
-                      ui->fileWatchingButton->isChecked());
+    QMap<QString, bool> currentSettings;
+    currentSettings["parallelSearching"] = ui->asyncSearchButton->isChecked();
+    currentSettings["liveColoring"] = ui->onlineColoringButton->isChecked();
+    currentSettings["fileWatching"] = ui->fileWatchingButton->isChecked();
+    currentSettings["liveSearching"] = ui->liveSearchButton->isChecked();
+    emit sendSettings(currentSettings);
     close();
 }
 
-void SettingsWindow::setValues(bool asyncSearch, bool liveColoring,
-                               bool fileWatching)
+void SettingsWindow::setValues(QMap<QString, bool> values)
 {
-    ui->asyncSearchButton->setChecked(asyncSearch);
-    ui->onlineColoringButton->setChecked(liveColoring);
-    ui->fileWatchingButton->setChecked(fileWatching);
+    ui->asyncSearchButton->setChecked(values.value("parallelSearching", false));
+    ui->onlineColoringButton->setChecked(values.value("liveColoring", false));
+    ui->fileWatchingButton->setChecked(values.value("fileWatching", false));
+    ui->liveSearchButton->setChecked(values.value("liveSearching", false));
 }
 
 SettingsWindow::~SettingsWindow() {}

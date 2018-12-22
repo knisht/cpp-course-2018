@@ -32,9 +32,9 @@ public slots:
     void stopActions();
     void openFileManager();
     void openEditor();
-    void receiveSettings(bool asyncSearch, bool liveColoring,
-                         bool fileWatching);
+    void receiveSettings(QMap<QString, bool> settings);
     void indexate(QString const &path);
+    void catchTextChange();
 
 private slots:
     void onStartedIndexing();

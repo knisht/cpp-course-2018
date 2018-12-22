@@ -48,6 +48,13 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QCheckBox" name="liveSearchButton">
+         <property name="text">
+          <string>Live searching</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
      <item>

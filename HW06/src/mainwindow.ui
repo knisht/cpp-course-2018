@@ -201,7 +201,7 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
         <property name="spacing">
-         <number>0</number>
+         <number>20</number>
         </property>
         <property name="sizeConstraint">
          <enum>QLayout::SetMinimumSize</enum>
@@ -216,6 +216,19 @@
           </property>
           <property name="placeholderText">
            <string>Input string you want to find</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="findStringButton">
+          <property name="maximumSize">
+           <size>
+            <width>200</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Find</string>
           </property>
          </widget>
         </item>
@@ -336,7 +349,7 @@
    <sender>stringInput</sender>
    <signal>textChanged()</signal>
    <receiver>MainWindow</receiver>
-   <slot>findSubstring()</slot>
+   <slot>catchTextChange()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>369</x>
@@ -396,6 +409,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>findStringButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>findSubstring()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>773</x>
+     <y>458</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>413</x>
+     <y>311</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>findSubstring()</slot>
@@ -407,5 +436,6 @@
   <slot>renderText()</slot>
   <slot>openFileManager()</slot>
   <slot>openEditor()</slot>
+  <slot>catchTextChange()</slot>
  </slots>
 </ui>
