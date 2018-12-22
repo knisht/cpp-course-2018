@@ -15,11 +15,6 @@
 namespace fs = std::filesystem;
 namespace
 {
-std::ifstream::pos_type file_size(const char *filename)
-{
-    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
-    return in.tellg();
-}
 
 struct ContextHandler {
     size_t getTransactionalId() { return 0; }
@@ -217,7 +212,7 @@ TEST(correctness_index, basic_binary)
     std::ofstream(directory + "/a") << target << std::flush;
     TrigramIndex index;
     setUpIndex(index, directory);
-    ASSERT_EQ(index.getDocuments().size(), 0);
+    ASSERT_EQ(index.getDocuments().size(), 0u);
     fs::remove_all(directory);
 }
 
@@ -232,7 +227,7 @@ TEST(correctness_index, garbage)
     std::ofstream(directory + "/a") << target << std::flush;
     TrigramIndex index;
     setUpIndex(index, directory);
-    ASSERT_EQ(index.getDocuments().size(), 0);
+    ASSERT_EQ(index.getDocuments().size(), 0u);
     fs::remove_all(directory);
 }
 
@@ -247,7 +242,7 @@ TEST(correctness_index, large_ascii)
     std::ofstream(directory + "/a") << target << std::flush;
     TrigramIndex index;
     setUpIndex(index, directory);
-    ASSERT_EQ(index.getDocuments().size(), 1);
+    ASSERT_EQ(index.getDocuments().size(), 1u);
     fs::remove_all(directory);
 }
 
@@ -424,7 +419,7 @@ TEST(correctness_watching, remove_file)
     reparse(
         index,
         QFileInfo(QString::fromStdString(directory + "/a")).absoluteFilePath());
-    ASSERT_EQ(static_cast<int>(0), index.getDocuments().size());
+    ASSERT_EQ(0u, index.getDocuments().size());
     fs::remove_all(directory);
 }
 

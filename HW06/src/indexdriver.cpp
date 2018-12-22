@@ -149,12 +149,13 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
     emit determinedFilesAmount(static_cast<long long>(
         documents.size() * 2 + (fileWatching ? documents.size() : 0)));
     using namespace std::placeholders;
-    auto activatedUnwrapTrigrams = std::bind(
-        TrigramIndex::unwrapTrigrams<IndexDriver>, _1, currentContext);
-    QFuture<void> unwrapJob = QtConcurrent::map(
-        documents.begin(), documents.end(), activatedUnwrapTrigrams);
-    currentTaskWatcher.setFuture(unwrapJob);
-    unwrapJob.waitForFinished();
+
+    auto activatedUnwrapTrigrams = [&](Document const &document) {
+        TrigramIndex::unwrapTrigrams(document, currentContext);
+    };
+    currentTaskWatcher.setFuture(QtConcurrent::map(
+        documents.begin(), documents.end(), activatedUnwrapTrigrams));
+    currentTaskWatcher.waitForFinished();
     if (currentContext.isTaskCancelled()) {
         emit finishedIndexing("interrupted");
         return;
@@ -164,7 +165,6 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
         emit finishedIndexing("interrupted");
         return;
     }
-    qDebug() << fileWatching;
     if (fileWatching) {
         fileWatcher.addPath(path);
         for (Document const &document : index.getDocuments()) {
