@@ -32,7 +32,13 @@ void IndexDriver::processChangedDirectory(const QString &path)
     qInfo() << "Directory changes detected in" << path;
     TaskContext<IndexDriver, qsizetype> context{
         transactionalId, this, &IndexDriver::nothing<qsizetype>};
-    for (auto newFilename : index.reprocessDirectory(path, context)) {
+    std::cout << "HERE!!!" << std::endl;
+    for (QString const &newFilename : index.reprocessDirectory(path, context)) {
+        if (QFileInfo(newFilename).isDir()) {
+            if (!fileWatcher.directories().contains(newFilename)) {
+                processChangedDirectory(newFilename);
+            }
+        }
         fileWatcher.addPath(newFilename);
     }
 }
@@ -67,7 +73,7 @@ void IndexDriver::findSubstringSync(QString const &substring,
     QElapsedTimer timer;
     timer.start();
     std::vector<QString> filenames =
-        index.getCandidateFileIds(stdTarget, currentContext);
+        index.getCandidateFileNames(stdTarget, currentContext);
     if (filenames.size() == 0) {
         emit finishedFinding("No files");
         return;

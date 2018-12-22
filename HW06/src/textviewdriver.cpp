@@ -11,15 +11,19 @@ TextViewDriver::TextViewDriver(QWidget *&parent) : QTextEdit(parent)
 
 TextViewDriver::~TextViewDriver() {}
 
-void TextViewDriver::loadText(QString const &path)
+bool TextViewDriver::loadText(QString const &path)
 {
     currentFileName = path;
     QFile file(currentFileName);
-    file.open(QFile::ReadOnly);
     QTextEdit::clear();
-    QTextEdit::document()->setPlainText(file.readAll());
-    file.close();
-    defaultCursor = QTextEdit::textCursor();
+    if (file.open(QFile::ReadOnly)) {
+        QTextEdit::document()->setPlainText(file.readAll());
+        defaultCursor = QTextEdit::textCursor();
+        return true;
+    } else {
+        QTextEdit::document()->setPlainText("Something wrong with this file");
+        return false;
+    }
 }
 
 void TextViewDriver::setWordSize(qsizetype newSize) { wordSize = newSize; }

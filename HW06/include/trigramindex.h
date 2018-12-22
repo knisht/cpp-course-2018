@@ -21,30 +21,10 @@ public:
     TrigramIndex(TrigramIndex const &) = delete;
     TrigramIndex &operator=(TrigramIndex const &) = delete;
 
-    //    std::vector<QString> reprocessDirectory(QString const &dirname);
     const std::unordered_set<Document, Document::DocumentHash> &
     getDocuments() const;
     void printDocuments();
     void flush();
-
-    template <typename Owner>
-    void setUp(QString const &root, TaskContext<Owner, qsizetype> &usualContext,
-               TaskContext<Owner, QString const &> &dirContext)
-    {
-        // just function for testing
-        auto documents = getFileEntries(root, dirContext);
-        calculateTrigrams(documents, usualContext);
-        //        setUpDocuments(documents, usualContext);
-    }
-
-    template <typename T>
-    std::vector<QString> findSubstring(QString const &substring,
-                                       TaskContext<T, qsizetype> &context)
-    {
-        return findOccurrencesInFiles(
-            getCandidateFileIds(substring.toStdString(), context),
-            substring.toStdString(), context);
-    }
 
     template <typename T>
     static std::vector<Document>
@@ -83,8 +63,9 @@ public:
     }
 
     template <typename T>
-    std::vector<QString> getCandidateFileIds(std::string const &target,
-                                             TaskContext<T, qsizetype> &context)
+    std::vector<QString>
+    getCandidateFileNames(std::string const &target,
+                          TaskContext<T, qsizetype> &context)
     {
         if (target.size() < 3) {
             std::vector<QString> result;
@@ -207,8 +188,7 @@ public:
         // doesn't compile)
         QFile fileInstance{QFileInfo(document.filename).absoluteFilePath()};
         if (!fileInstance.open(QFile::ReadOnly)) {
-            qWarning() << "Could not open" << document.filename
-                       << "| Reindex recommended";
+            qWarning() << "Error while opening" << document.filename;
             return;
         }
         qsizetype fileSize = QFileInfo(document.filename).size();
@@ -286,16 +266,19 @@ public:
                 documents.find(Document{filename});
             it->trigramOccurrences.clear();
             unwrapTrigrams(*it, context);
+            if (it->trigramOccurrences.size() == 0) {
+                documents.erase(it);
+            }
         }
     }
 
     template <typename T>
-    std::vector<QString> reprocessDirectory(QString const &filename,
+    std::vector<QString> reprocessDirectory(QString const &dirname,
                                             TaskContext<T, qsizetype> &context)
     {
-        QDirIterator dirIterator(filename, QDir::NoFilter | QDir::Hidden |
-                                               QDir::NoDotAndDotDot |
-                                               QDir::NoDotDot);
+        QDirIterator dirIterator(dirname, QDir::AllEntries | QDir::Hidden |
+                                              QDir::NoDotAndDotDot |
+                                              QDir::NoDotDot);
         std::vector<Document> documents;
         std::vector<QString> changedFiles;
         while (dirIterator.hasNext()) {

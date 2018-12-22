@@ -58,7 +58,10 @@ void MainWindow::getFileContent(QListWidgetItem *item)
     qInfo() << "Opening" << filename;
     ui->currentFileLabel->setText("Opened file: " +
                                   QFileInfo(filename).fileName());
-    ui->filesContent->loadText(QDir(currentDir).absoluteFilePath(filename));
+    if (!ui->filesContent->loadText(
+            QDir(currentDir).absoluteFilePath(filename))) {
+        return;
+    }
     ui->filesContent->setWordSize(currentWord.size());
     ui->filesContent->setWordPositions(
         worker.getFileStat(filename, currentWord));

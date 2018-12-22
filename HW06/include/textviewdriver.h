@@ -16,7 +16,7 @@ public:
 public slots:
     void establishNextOccurrence();
     void establishPrevOccurrence();
-    void loadText(QString const &path);
+    bool loadText(QString const &path);
     void renderText();
     void interrupt();
     QString const &getCurrentFilename() const;
