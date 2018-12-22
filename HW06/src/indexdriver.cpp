@@ -125,6 +125,15 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
     emit startedIndexing();
     QElapsedTimer timer;
     timer.start();
+    if (fileWatching) {
+        QStringList fileDump = fileWatcher.files();
+        for (QString const &file : fileDump) {
+            if (currentContext.isTaskCancelled()) {
+                break;
+            }
+            fileWatcher.removePath(file);
+        }
+    }
     std::vector<Document> documents =
         TrigramIndex::getFileEntries(path, directoryContext);
     if (currentContext.isTaskCancelled()) {
@@ -149,9 +158,13 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
         emit finishedIndexing("interrupted");
         return;
     }
+    qDebug() << fileWatching;
     if (fileWatching) {
         fileWatcher.addPath(path);
         for (Document const &document : index.getDocuments()) {
+            if (currentContext.isTaskCancelled()) {
+                break;
+            }
             fileWatcher.addPath(document.filename);
             emit increaseProgress(1);
         }

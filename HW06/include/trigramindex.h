@@ -296,37 +296,25 @@ public:
         QDirIterator dirIterator(filename, QDir::NoFilter | QDir::Hidden |
                                                QDir::NoDotAndDotDot |
                                                QDir::NoDotDot);
-        //        std::vector<Document> documents;
+        std::vector<Document> documents;
         std::vector<QString> changedFiles;
-        //        while (dirIterator.hasNext()) {
-        //            dirIterator.next();
-        //            if (!dirIterator.fileInfo().isDir()) {
-        //                documents.push_back(
-        //                    Document(QFile(dirIterator.filePath()).fileName()));
-        //            } else {
-        //                changedFiles.push_back(
-        //                    QFileInfo(dirIterator.filePath()).absoluteFilePath());
-        //            }
-        //        }
-        //        std::vector<size_t> realDocuments;
-        //        for (size_t i = 0; i < documents.size(); ++i) {
-        //            realDocuments.push_back(i);
-        //            for (size_t j = 0; j < this->documents.size(); ++j) {
-        //                if
-        //                (QFileInfo(documents[i].filename).absoluteFilePath()
-        //                ==
-        //                    this->documents[j].filename) {
-        //                    realDocuments.pop_back();
-        //                }
-        //            }
-        //        }
-        //        for (size_t docId : realDocuments) {
-        //            unwrapTrigrams(documents[docId], context);
-        //            if (documents[docId].trigramOccurrences.size() > 0) {
-        //                changedFiles.push_back(documents[docId].filename);
-        //                this->documents.insert(std::move(documents[docId]));
-        //            }
-        //        }
+        while (dirIterator.hasNext()) {
+            dirIterator.next();
+            QString fullpath =
+                QFileInfo(dirIterator.filePath()).absoluteFilePath();
+            if (!dirIterator.fileInfo().isDir()) {
+                Document doc{fullpath};
+                if (this->documents.count(doc) == 0) {
+                    unwrapTrigrams(doc, context);
+                    if (doc.trigramOccurrences.size() > 0) {
+                        this->documents.insert(std::move(doc));
+                        changedFiles.push_back(fullpath);
+                    }
+                }
+            } else {
+                changedFiles.push_back(fullpath);
+            }
+        }
         return changedFiles;
     }
 

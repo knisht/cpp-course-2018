@@ -7,8 +7,8 @@
 #include <iostream>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow), currentDir("."),
-      settingsWindow(new SettingsWindow(this)),
+    : QMainWindow(parent), ui(new Ui::MainWindow),
+      settingsWindow(new SettingsWindow(this)), currentDir("."),
       settings("Zeron_Software", "Librarian")
 {
     ui->setupUi(this);
@@ -37,6 +37,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::findSubstring()
 {
+    if (isIndexing) {
+        return;
+    }
     currentWord = ui->stringInput->toPlainText();
     if (currentWord.size() == 0) {
         return;
@@ -80,11 +83,13 @@ MainWindow::~MainWindow() { worker.interrupt(); }
 void MainWindow::onStartedIndexing()
 {
     ui->progressBar->reset();
+    isIndexing = true;
     ui->statusbar->showMessage("Indexing...");
 }
 
 void MainWindow::onFinishedIndexing(QString const &result)
 {
+    isIndexing = false;
     if (result == "") {
         ui->statusbar->showMessage("Indexing finished successfully");
         ui->progressBar->setValue(ui->progressBar->maximum());

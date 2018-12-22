@@ -57,6 +57,7 @@ private:
     QString currentDir;
     QString currentWord;
     QSettings settings;
+    bool isIndexing;
 };
 
 #endif // MAINWINDOW_H
