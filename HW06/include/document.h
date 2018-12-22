@@ -7,26 +7,29 @@
 
 struct Document {
     QString filename;
-    std::vector<Trigram> trigramOccurrences;
+    mutable std::vector<Trigram> trigramOccurrences;
 
     explicit Document(QString filename);
 
     //    Document(Document const &other);
     //    Document &operator=(Document const &other);
     Document(Document &&other);
-    //    // TODO: maybe move ctors slow my program
-    //    Document &operator=(Document &&other);
     Document();
 
-    void sort();
+    void sort() const;
 
-    bool contains(Trigram const &trigram);
+    bool contains(Trigram const &trigram) const;
 
     friend bool nonTrivial(Document const &document);
     friend void swap(Document &first, Document &second);
+    friend bool operator==(Document const &a, Document const &b);
+    struct DocumentHash {
+        size_t operator()(Document const &target) const;
+    };
 
-    void add(Trigram const &trigram);
+    void add(Trigram const &trigram) const;
 };
 bool nonTrivial(Document const &document);
 void swap(Document &first, Document &second);
+bool operator==(Document const &a, Document const &b);
 #endif

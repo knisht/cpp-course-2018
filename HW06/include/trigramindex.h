@@ -22,7 +22,8 @@ public:
     TrigramIndex &operator=(TrigramIndex const &) = delete;
 
     //    std::vector<QString> reprocessDirectory(QString const &dirname);
-    const std::vector<Document> &getDocuments() const;
+    const std::unordered_set<Document, Document::DocumentHash> &
+    getDocuments() const;
     void printDocuments();
     void flush();
 
@@ -82,16 +83,16 @@ public:
     }
 
     template <typename T>
-    std::vector<size_t> getCandidateFileIds(std::string const &target,
-                                            TaskContext<T, qsizetype> &context)
+    std::vector<QString> getCandidateFileIds(std::string const &target,
+                                             TaskContext<T, qsizetype> &context)
     {
         if (target.size() < 3) {
-            std::vector<size_t> result;
-            for (size_t i = 0; i < documents.size(); ++i) {
+            std::vector<QString> result;
+            for (Document const &document : documents) {
                 if (context.isTaskCancelled()) {
                     return {};
                 } else {
-                    result.push_back(i);
+                    result.push_back(document.filename);
                 }
             }
             return result;
@@ -102,17 +103,17 @@ public:
              i < target.size() - 2 && !(context.isTaskCancelled()); ++i) {
             targetTrigrams.insert({&target[i]});
         }
-        std::vector<size_t> result;
-        for (size_t i = 0; i < documents.size(); ++i) {
+        std::vector<QString> result;
+        for (Document const &document : documents) {
             bool containsAll = true;
             for (Trigram const &trigram : targetTrigrams) {
-                containsAll &= (documents[i].contains(trigram));
+                containsAll &= (document.contains(trigram));
                 if (!containsAll) {
                     break;
                 }
             }
             if (containsAll) {
-                result.push_back(i);
+                result.push_back(document.filename);
             }
         }
         return result;
@@ -129,27 +130,28 @@ public:
     };
 
     template <typename T>
-    void findOccurrencesInFile(size_t fileId, Searcher const &searcher,
+    void findOccurrencesInFile(QString const &filename,
+                               Searcher const &searcher,
                                TaskContext<T, QString const &, size_t> &context)
     {
-        if (occurrenceExist(documents[fileId].filename, searcher, context)) {
-            std::invoke(context.callOnSuccess, context.caller,
-                        documents[fileId].filename, context.transactionalId);
+        if (occurrenceExist(filename, searcher, context)) {
+            std::invoke(context.callOnSuccess, context.caller, filename,
+                        context.transactionalId);
         }
     }
 
     template <typename T>
     void
-    findOccurrencesInFiles(std::vector<size_t> const &fileIds,
+    findOccurrencesInFiles(std::vector<QString> const &filenames,
                            std::string const &target,
                            TaskContext<T, QString const &, size_t> &context)
     {
         Searcher searcher(target);
-        for (size_t fileId : fileIds) {
+        for (QString const &filename : filenames) {
             if (context.isTaskCancelled()) {
                 return;
             }
-            findOccurrencesInFile(fileId, searcher, context);
+            findOccurrencesInFile(filename, searcher, context);
         }
     }
 
@@ -197,7 +199,7 @@ public:
     }
 
     template <typename T>
-    static void unwrapTrigrams(Document &document,
+    static void unwrapTrigrams(Document const &document,
                                TaskContext<T, qsizetype> context)
     {
         static const qsizetype BUF_SIZE = 1 << 12;
@@ -264,14 +266,12 @@ public:
     }
 
     template <typename T>
-    void getFilteredDocuments(std::vector<Document> &candidateDocuments,
+    void getFilteredDocuments(std::vector<Document> &&candidateDocuments,
                               TaskContext<T, qsizetype> &context)
     {
-        for (size_t i = 0;
-             i < candidateDocuments.size() && !context.isTaskCancelled(); ++i) {
+        for (size_t i = 0; i < candidateDocuments.size(); ++i) {
             if (nonTrivial(candidateDocuments[i])) {
-                this->documents.push_back({});
-                swap(this->documents.back(), candidateDocuments[i]);
+                this->documents.insert(std::move(candidateDocuments[i]));
                 std::invoke(context.callOnSuccess, context.caller, 1);
             }
         }
@@ -281,14 +281,11 @@ public:
     void reprocessFile(QString const &filename,
                        TaskContext<T, qsizetype> &context)
     {
-        for (size_t i = 0; i < documents.size() && !context.isTaskCancelled();
-             ++i) {
-            if (documents[i].filename == filename) {
-                documents[i].trigramOccurrences.clear();
-                documents[i].filename = "";
-                unwrapTrigrams(documents[i], context);
-                return;
-            }
+        if (documents.count(Document{filename}) != 0) {
+            std::unordered_set<Document, Document::DocumentHash>::iterator it =
+                documents.find(Document{filename});
+            it->trigramOccurrences.clear();
+            unwrapTrigrams(*it, context);
         }
     }
 
@@ -299,35 +296,37 @@ public:
         QDirIterator dirIterator(filename, QDir::NoFilter | QDir::Hidden |
                                                QDir::NoDotAndDotDot |
                                                QDir::NoDotDot);
-        std::vector<Document> documents;
+        //        std::vector<Document> documents;
         std::vector<QString> changedFiles;
-        while (dirIterator.hasNext()) {
-            dirIterator.next();
-            if (!dirIterator.fileInfo().isDir()) {
-                documents.push_back(
-                    Document(QFile(dirIterator.filePath()).fileName()));
-            } else {
-                changedFiles.push_back(
-                    QFileInfo(dirIterator.filePath()).absoluteFilePath());
-            }
-        }
-        std::vector<size_t> realDocuments;
-        for (size_t i = 0; i < documents.size(); ++i) {
-            realDocuments.push_back(i);
-            for (size_t j = 0; j < this->documents.size(); ++j) {
-                if (QFileInfo(documents[i].filename).absoluteFilePath() ==
-                    this->documents[j].filename) {
-                    realDocuments.pop_back();
-                }
-            }
-        }
-        for (size_t docId : realDocuments) {
-            unwrapTrigrams(documents[docId], context);
-            if (documents[docId].trigramOccurrences.size() > 0) {
-                changedFiles.push_back(documents[docId].filename);
-                this->documents.push_back(std::move(documents[docId]));
-            }
-        }
+        //        while (dirIterator.hasNext()) {
+        //            dirIterator.next();
+        //            if (!dirIterator.fileInfo().isDir()) {
+        //                documents.push_back(
+        //                    Document(QFile(dirIterator.filePath()).fileName()));
+        //            } else {
+        //                changedFiles.push_back(
+        //                    QFileInfo(dirIterator.filePath()).absoluteFilePath());
+        //            }
+        //        }
+        //        std::vector<size_t> realDocuments;
+        //        for (size_t i = 0; i < documents.size(); ++i) {
+        //            realDocuments.push_back(i);
+        //            for (size_t j = 0; j < this->documents.size(); ++j) {
+        //                if
+        //                (QFileInfo(documents[i].filename).absoluteFilePath()
+        //                ==
+        //                    this->documents[j].filename) {
+        //                    realDocuments.pop_back();
+        //                }
+        //            }
+        //        }
+        //        for (size_t docId : realDocuments) {
+        //            unwrapTrigrams(documents[docId], context);
+        //            if (documents[docId].trigramOccurrences.size() > 0) {
+        //                changedFiles.push_back(documents[docId].filename);
+        //                this->documents.insert(std::move(documents[docId]));
+        //            }
+        //        }
         return changedFiles;
     }
 
@@ -420,6 +419,6 @@ private:
             ;
     }
     static const qsizetype BUF_SIZE = 1 << 12;
-    std::vector<Document> documents;
+    std::unordered_set<Document, Document::DocumentHash> documents;
 };
 #endif // TRIGRAM_INDEX_H

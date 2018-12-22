@@ -13,7 +13,7 @@
 void TrigramIndex::printDocuments()
 {
     std::cout << "Files at all: " << documents.size() << std::endl;
-    for (auto &it : documents) {
+    for (Document const &it : getDocuments()) {
         std::cout << it.filename.toStdString() << std::endl;
     }
 }
@@ -22,7 +22,8 @@ TrigramIndex::TrigramIndex() {}
 
 void TrigramIndex::flush() { documents.clear(); }
 
-const std::vector<Document> &TrigramIndex::getDocuments() const
+std::unordered_set<Document, Document::DocumentHash> const &
+TrigramIndex::getDocuments() const
 {
     return documents;
 }

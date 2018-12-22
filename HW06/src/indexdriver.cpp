@@ -66,24 +66,24 @@ void IndexDriver::findSubstringSync(QString const &substring,
     std::string stdTarget = substring.toStdString();
     QElapsedTimer timer;
     timer.start();
-    std::vector<size_t> fileIds =
+    std::vector<QString> filenames =
         index.getCandidateFileIds(stdTarget, currentContext);
-    if (fileIds.size() == 0) {
+    if (filenames.size() == 0) {
         emit finishedFinding("No files");
         return;
     }
-    emit determinedFilesAmount(static_cast<long long>(fileIds.size()));
+    emit determinedFilesAmount(static_cast<long long>(filenames.size()));
     if (parallelSearch) {
         TrigramIndex::Searcher searcher(stdTarget);
         using namespace std::placeholders;
-        auto preparedFunc = [&](size_t fileId) {
-            index.findOccurrencesInFile(fileId, searcher, catcherContext);
+        auto preparedFunc = [&](QString filename) {
+            index.findOccurrencesInFile(filename, searcher, catcherContext);
         };
-        currentTaskWatcher.setFuture(
-            QtConcurrent::map(fileIds.begin(), fileIds.end(), preparedFunc));
+        currentTaskWatcher.setFuture(QtConcurrent::map(
+            filenames.begin(), filenames.end(), preparedFunc));
         currentTaskWatcher.waitForFinished();
     } else {
-        index.findOccurrencesInFiles(fileIds, stdTarget, catcherContext);
+        index.findOccurrencesInFiles(filenames, stdTarget, catcherContext);
     }
     qInfo() << "Finding of" << substring << "finished in" << timer.elapsed()
             << "ms";
@@ -144,7 +144,7 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
         emit finishedIndexing("interrupted");
         return;
     }
-    index.getFilteredDocuments(documents, currentContext);
+    index.getFilteredDocuments(std::move(documents), currentContext);
     if (currentContext.isTaskCancelled()) {
         emit finishedIndexing("interrupted");
         return;

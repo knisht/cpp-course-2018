@@ -1,6 +1,7 @@
 #include "include/document.h"
 #include <QDebug>
 
+#include <QSet>
 Document::Document() {}
 
 Document::Document(QString filename) : filename(filename), trigramOccurrences{}
@@ -24,6 +25,11 @@ Document::Document(Document &&other)
 {
 }
 
+size_t Document::DocumentHash::operator()(Document const &target) const
+{
+    return qHash(target.filename);
+}
+
 // Document &Document::operator=(Document &&other)
 //{
 //    Document temporary(other);
@@ -31,19 +37,19 @@ Document::Document(Document &&other)
 //    return *this;
 //}
 
-void Document::add(Trigram const &trigram)
+void Document::add(Trigram const &trigram) const
 {
     trigramOccurrences.push_back(trigram);
 }
 
-bool Document::contains(Trigram const &trigram)
+bool Document::contains(Trigram const &trigram) const
 {
     auto result = std::lower_bound(trigramOccurrences.begin(),
                                    trigramOccurrences.end(), trigram);
     return result != trigramOccurrences.end() && *(result) == trigram;
 }
 
-void Document::sort()
+void Document::sort() const
 {
     std::sort(trigramOccurrences.begin(), trigramOccurrences.end());
 }
@@ -57,4 +63,9 @@ void swap(Document &first, Document &second)
 {
     swap(first.filename, second.filename);
     swap(first.trigramOccurrences, second.trigramOccurrences);
+}
+
+bool operator==(Document const &a, Document const &b)
+{
+    return a.filename == b.filename;
 }
