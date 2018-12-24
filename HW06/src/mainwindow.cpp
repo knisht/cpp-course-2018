@@ -13,6 +13,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle("Librarian");
+    ui->filesWidget->setUniformItemSizes(true);
     ui->label->setText("Current dir: " + QDir(".").canonicalPath());
     connect(&worker, SIGNAL(startedIndexing()), this,
             SLOT(onStartedIndexing()));
