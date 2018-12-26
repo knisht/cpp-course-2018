@@ -1,3 +1,5 @@
+#include "include/indexdriver.h"
+#include <QApplication>
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>

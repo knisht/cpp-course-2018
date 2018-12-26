@@ -32,7 +32,6 @@ void IndexDriver::processChangedDirectory(const QString &path)
     qInfo() << "Directory changes detected in" << path;
     TaskContext<IndexDriver, qsizetype> context{
         transactionalId, this, &IndexDriver::nothing<qsizetype>};
-    std::cout << "HERE!!!" << std::endl;
     for (QString const &newFilename : index.reprocessDirectory(path, context)) {
         if (QFileInfo(newFilename).isDir()) {
             if (!fileWatcher.directories().contains(newFilename)) {
@@ -105,9 +104,9 @@ void IndexDriver::increaseProgress(qsizetype delta)
     emit progressChanged(delta);
 }
 
-void IndexDriver::setWatchingDirectory(QString const &directory)
+void IndexDriver::setWatchFile(QString const &file)
 {
-    fileWatcher.addPath(directory);
+    fileWatcher.addPath(file);
 }
 
 void IndexDriver::indexateAsync(QString const &path, bool fileWatching)
@@ -125,7 +124,7 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
         validTransactionalId, this, &IndexDriver::increaseProgress};
     TaskContext<IndexDriver, QString const &> directoryContext{
         validTransactionalId, this,
-        (fileWatching ? &IndexDriver::setWatchingDirectory
+        (fileWatching ? &IndexDriver::setWatchFile
                       : &IndexDriver::nothing<QString const &>)};
     index.flush();
     emit startedIndexing();
@@ -146,10 +145,8 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
         emit finishedIndexing("interrupted");
         return;
     }
-    emit determinedFilesAmount(static_cast<long long>(
-        documents.size() * 2 + (fileWatching ? documents.size() : 0)));
+    emit determinedFilesAmount(static_cast<long long>(documents.size() * 2));
     using namespace std::placeholders;
-
     auto activatedUnwrapTrigrams = [&](TrigramIndex::DocumentEntry &document) {
         TrigramIndex::unwrapTrigrams(document.first, document.second,
                                      currentContext);
@@ -165,16 +162,6 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
     if (currentContext.isTaskCancelled()) {
         emit finishedIndexing("interrupted");
         return;
-    }
-    if (fileWatching) {
-        fileWatcher.addPath(path);
-        for (auto const &document : index.getDocuments()) {
-            if (currentContext.isTaskCancelled()) {
-                break;
-            }
-            fileWatcher.addPath(document.first);
-            emit increaseProgress(1);
-        }
     }
     qInfo() << "Indexing of" << path << "finished in" << timer.elapsed()
             << "ms";

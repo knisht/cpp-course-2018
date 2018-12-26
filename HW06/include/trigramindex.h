@@ -36,15 +36,18 @@ public:
             root, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot,
             QDirIterator::Subdirectories);
         std::vector<DocumentEntry> documents;
+        std::invoke(directoryHandler.callOnSuccess, directoryHandler.caller,
+                    QFileInfo(root).absoluteFilePath());
         while (dirIterator.hasNext() && !directoryHandler.isTaskCancelled()) {
             dirIterator.next();
-            if (dirIterator.fileInfo().isDir()) {
-                std::invoke(directoryHandler.callOnSuccess,
-                            directoryHandler.caller, dirIterator.filePath());
-            } else {
+            if (dirIterator.fileInfo().isFile()) {
                 QString path =
                     QFileInfo(dirIterator.filePath()).absoluteFilePath();
                 documents.push_back({path, {}});
+            } else {
+                std::invoke(
+                    directoryHandler.callOnSuccess, directoryHandler.caller,
+                    QFileInfo(dirIterator.filePath()).absoluteFilePath());
             }
         }
         return documents;
@@ -194,7 +197,8 @@ public:
         int processedBytesAmount = 0;
 
         std::unordered_set<Trigram, Trigram::TrigramHash> foundTrigrams;
-
+        foundTrigrams.reserve(
+            static_cast<size_t>(std::min(fileSize / 20, 20000ll)));
         while (fileSize > 0 && !context.isTaskCancelled()) {
             qint64 receivedBytes =
                 fileInstance.read(&bytes[0], static_cast<qint64>(blockSize));

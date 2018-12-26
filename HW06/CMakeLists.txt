@@ -66,5 +66,5 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 
-target_link_libraries(index_test Qt5::Widgets  -lpthread stdc++fs)
+target_link_libraries(index_test Qt5::Widgets Qt5::Concurrent -lpthread stdc++fs)
 target_link_libraries(librarian Qt5::Widgets Qt5::Concurrent -lpthread)
