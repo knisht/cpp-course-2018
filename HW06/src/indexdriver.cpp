@@ -140,7 +140,7 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
             fileWatcher.removePath(file);
         }
     }
-    std::vector<Document> documents =
+    std::vector<TrigramIndex::DocumentEntry> documents =
         TrigramIndex::getFileEntries(path, directoryContext);
     if (currentContext.isTaskCancelled()) {
         emit finishedIndexing("interrupted");
@@ -150,8 +150,9 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
         documents.size() * 2 + (fileWatching ? documents.size() : 0)));
     using namespace std::placeholders;
 
-    auto activatedUnwrapTrigrams = [&](Document const &document) {
-        TrigramIndex::unwrapTrigrams(document, currentContext);
+    auto activatedUnwrapTrigrams = [&](TrigramIndex::DocumentEntry &document) {
+        TrigramIndex::unwrapTrigrams(document.first, document.second,
+                                     currentContext);
     };
     currentTaskWatcher.setFuture(QtConcurrent::map(
         documents.begin(), documents.end(), activatedUnwrapTrigrams));
@@ -167,11 +168,11 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
     }
     if (fileWatching) {
         fileWatcher.addPath(path);
-        for (Document const &document : index.getDocuments()) {
+        for (auto const &document : index.getDocuments()) {
             if (currentContext.isTaskCancelled()) {
                 break;
             }
-            fileWatcher.addPath(document.filename);
+            fileWatcher.addPath(document.first);
             emit increaseProgress(1);
         }
     }

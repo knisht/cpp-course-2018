@@ -38,10 +38,11 @@ static TaskContext substirngContext =
 
 void setUpIndex(TrigramIndex &index, std::string directory)
 {
-    std::vector<Document> filenames = TrigramIndex::getFileEntries(
-        QString::fromStdString(directory), substirngContext);
-    for (Document &doc : filenames) {
-        TrigramIndex::unwrapTrigrams(doc, qsizetypeContext);
+    std::vector<TrigramIndex::DocumentEntry> filenames =
+        TrigramIndex::getFileEntries(QString::fromStdString(directory),
+                                     substirngContext);
+    for (TrigramIndex::DocumentEntry &doc : filenames) {
+        TrigramIndex::unwrapTrigrams(doc.first, doc.second, qsizetypeContext);
     }
     index.getFilteredDocuments(std::move(filenames), qsizetypeContext);
 }

@@ -6,30 +6,21 @@
 #include <unordered_set>
 
 struct Document {
-    QString filename;
-    mutable std::vector<Trigram> trigramOccurrences;
+    static void sort(std::vector<Trigram> &vec)
+    {
+        std::sort(vec.begin(), vec.end());
+    }
 
-    explicit Document(QString filename);
+    static bool contains(std::vector<Trigram> const &trigramVector,
+                         Trigram const &target)
+    {
+        auto result = std::lower_bound(trigramVector.begin(),
+                                       trigramVector.end(), target);
+        return result != trigramVector.end() && *(result) == target;
+    }
 
-    //    Document(Document const &other);
-    //    Document &operator=(Document const &other);
-    Document(Document &&other);
-    Document();
-
-    void sort() const;
-
-    bool contains(Trigram const &trigram) const;
-
-    friend bool nonTrivial(Document const &document);
-    friend void swap(Document &first, Document &second);
-    friend bool operator==(Document const &a, Document const &b);
-    struct DocumentHash {
-        size_t operator()(Document const &target) const;
+    struct QStringHash {
+        size_t operator()(QString const &target) const;
     };
-
-    void add(Trigram const &trigram) const;
 };
-bool nonTrivial(Document const &document);
-void swap(Document &first, Document &second);
-bool operator==(Document const &a, Document const &b);
 #endif

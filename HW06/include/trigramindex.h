@@ -21,45 +21,33 @@ public:
     TrigramIndex(TrigramIndex const &) = delete;
     TrigramIndex &operator=(TrigramIndex const &) = delete;
 
-    const std::unordered_set<Document, Document::DocumentHash> &
-    getDocuments() const;
-    void printDocuments();
+    using IndexMap = std::unordered_map<QString, std::vector<Trigram>,
+                                        Document::QStringHash>;
+    using DocumentEntry = std::pair<QString, std::vector<Trigram>>;
+    const IndexMap &getDocuments() const;
     void flush();
 
     template <typename T>
-    static std::vector<Document>
+    static std::vector<DocumentEntry>
     getFileEntries(QString const &root,
                    TaskContext<T, QString const &> &directoryHandler)
     {
         QDirIterator dirIterator(
             root, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot,
             QDirIterator::Subdirectories);
-        std::vector<Document> documents;
+        std::vector<DocumentEntry> documents;
         while (dirIterator.hasNext() && !directoryHandler.isTaskCancelled()) {
             dirIterator.next();
             if (dirIterator.fileInfo().isDir()) {
                 std::invoke(directoryHandler.callOnSuccess,
                             directoryHandler.caller, dirIterator.filePath());
             } else {
-                documents.push_back(Document(
-                    QFileInfo(dirIterator.filePath()).absoluteFilePath()));
+                QString path =
+                    QFileInfo(dirIterator.filePath()).absoluteFilePath();
+                documents.push_back({path, {}});
             }
         }
         return documents;
-    }
-
-    template <typename T>
-    static void calculateTrigrams(std::vector<Document> &documents,
-                                  TaskContext<T, qsizetype> &context)
-    {
-        for (size_t i = 0; i < documents.size(); ++i) {
-            if (context.isTaskCancelled()) {
-                continue;
-            }
-            //            unwrapTrigrams(documents[i]);
-            documents[i].sort();
-            std::invoke(context.callOnSuccess, context.caller, 1);
-        }
     }
 
     template <typename T>
@@ -69,11 +57,11 @@ public:
     {
         if (target.size() < 3) {
             std::vector<QString> result;
-            for (Document const &document : documents) {
+            for (auto const &document : documents) {
                 if (context.isTaskCancelled()) {
                     return {};
                 } else {
-                    result.push_back(document.filename);
+                    result.push_back(document.first);
                 }
             }
             return result;
@@ -85,16 +73,16 @@ public:
             targetTrigrams.insert({&target[i]});
         }
         std::vector<QString> result;
-        for (Document const &document : documents) {
+        for (auto const &document : documents) {
             bool containsAll = true;
             for (Trigram const &trigram : targetTrigrams) {
-                containsAll &= (document.contains(trigram));
+                containsAll &= (Document::contains(document.second, trigram));
                 if (!containsAll) {
                     break;
                 }
             }
             if (containsAll) {
-                result.push_back(document.filename);
+                result.push_back(document.first);
             }
         }
         return result;
@@ -180,18 +168,19 @@ public:
     }
 
     template <typename T>
-    static void unwrapTrigrams(Document const &document,
+    static void unwrapTrigrams(QString const &filename,
+                               std::vector<Trigram> &consumer,
                                TaskContext<T, qsizetype> context)
     {
         static const qsizetype BUF_SIZE = 1 << 12;
         // Strange, above line is neccessary for debug build (otherwise it
         // doesn't compile)
-        QFile fileInstance{QFileInfo(document.filename).absoluteFilePath()};
+        QFile fileInstance{QFileInfo(filename).absoluteFilePath()};
         if (!fileInstance.open(QFile::ReadOnly)) {
-            qWarning() << "Error while opening" << document.filename;
+            qWarning() << "Error while opening" << filename;
             return;
         }
-        qsizetype fileSize = QFileInfo(document.filename).size();
+        qsizetype fileSize = QFileInfo(filename).size();
 
         // NOTE: files with filesize <= 2 are ignored
         if (fileSize <= 2) {
@@ -226,8 +215,7 @@ public:
                     foundTrigrams.insert(&bytes[i]);
                 }
                 if (foundTrigrams.size() > 200000) {
-                    qDebug()
-                        << document.filename << "is too big for processing";
+                    qDebug() << filename << "is too big for processing";
                     foundTrigrams.clear();
                     break;
                 }
@@ -238,19 +226,20 @@ public:
             blockSize = qMin(blockSize, fileSize);
             ++processedBytesAmount;
         }
+        consumer.reserve(foundTrigrams.size());
         for (Trigram const &t : foundTrigrams) {
-            document.add(t);
+            consumer.push_back(t);
         }
-        document.sort();
+        Document::sort(consumer);
         std::invoke(context.callOnSuccess, context.caller, 1);
     }
 
     template <typename T>
-    void getFilteredDocuments(std::vector<Document> &&candidateDocuments,
+    void getFilteredDocuments(std::vector<DocumentEntry> &&candidateDocuments,
                               TaskContext<T, qsizetype> &context)
     {
         for (size_t i = 0; i < candidateDocuments.size(); ++i) {
-            if (nonTrivial(candidateDocuments[i])) {
+            if (candidateDocuments[i].second.size() > 0) {
                 this->documents.insert(std::move(candidateDocuments[i]));
                 std::invoke(context.callOnSuccess, context.caller, 1);
             }
@@ -261,12 +250,11 @@ public:
     void reprocessFile(QString const &filename,
                        TaskContext<T, qsizetype> &context)
     {
-        if (documents.count(Document{filename}) != 0) {
-            std::unordered_set<Document, Document::DocumentHash>::iterator it =
-                documents.find(Document{filename});
-            it->trigramOccurrences.clear();
-            unwrapTrigrams(*it, context);
-            if (it->trigramOccurrences.size() == 0) {
+        if (documents.count(filename) != 0) {
+            IndexMap::iterator it = documents.find(filename);
+            it->second.clear();
+            unwrapTrigrams(it->first, it->second, context);
+            if (it->second.size() == 0) {
                 documents.erase(it);
             }
         }
@@ -286,11 +274,12 @@ public:
             QString fullpath =
                 QFileInfo(dirIterator.filePath()).absoluteFilePath();
             if (!dirIterator.fileInfo().isDir()) {
-                Document doc{fullpath};
-                if (this->documents.count(doc) == 0) {
-                    unwrapTrigrams(doc, context);
-                    if (doc.trigramOccurrences.size() > 0) {
-                        this->documents.insert(std::move(doc));
+                DocumentEntry newDocument{fullpath, {}};
+                if (this->documents.count(fullpath) == 0) {
+                    unwrapTrigrams(newDocument.first, newDocument.second,
+                                   context);
+                    if (newDocument.second.size() > 0) {
+                        this->documents.insert(std::move(newDocument));
                         changedFiles.push_back(fullpath);
                     }
                 }
@@ -390,6 +379,6 @@ private:
             ;
     }
     static const qsizetype BUF_SIZE = 1 << 12;
-    std::unordered_set<Document, Document::DocumentHash> documents;
+    IndexMap documents;
 };
 #endif // TRIGRAM_INDEX_H

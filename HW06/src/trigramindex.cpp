@@ -10,20 +10,11 @@
 #include <unordered_set>
 #include <utility>
 
-void TrigramIndex::printDocuments()
-{
-    std::cout << "Files at all: " << documents.size() << std::endl;
-    for (Document const &it : getDocuments()) {
-        std::cout << it.filename.toStdString() << std::endl;
-    }
-}
-
 TrigramIndex::TrigramIndex() {}
 
 void TrigramIndex::flush() { documents.clear(); }
 
-std::unordered_set<Document, Document::DocumentHash> const &
-TrigramIndex::getDocuments() const
+TrigramIndex::IndexMap const &TrigramIndex::getDocuments() const
 {
     return documents;
 }
