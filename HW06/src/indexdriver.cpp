@@ -9,7 +9,7 @@
 
 IndexDriver::IndexDriver(QObject *parent)
     : QObject(parent), globalTaskWatcher(), index(), transactionalId(0),
-      fileWatcher()
+      fileWatcher(), isIndexing(false)
 {
     connect(&fileWatcher, SIGNAL(fileChanged(const QString &)), this,
             SLOT(processChangedFile(const QString &)));
@@ -29,6 +29,9 @@ void IndexDriver::processChangedFile(const QString &path)
 
 void IndexDriver::processChangedDirectory(const QString &path)
 {
+    if (isIndexing) {
+        return;
+    }
     qInfo() << "Directory changes detected in" << path;
     TaskContext<IndexDriver, qsizetype> context{
         transactionalId, this, &IndexDriver::nothing<qsizetype>};
@@ -37,8 +40,8 @@ void IndexDriver::processChangedDirectory(const QString &path)
             if (!fileWatcher.directories().contains(newFilename)) {
                 processChangedDirectory(newFilename);
             }
+            fileWatcher.addPath(newFilename);
         }
-        fileWatcher.addPath(newFilename);
     }
 }
 
@@ -126,22 +129,22 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
         validTransactionalId, this,
         (fileWatching ? &IndexDriver::setWatchFile
                       : &IndexDriver::nothing<QString const &>)};
+    isIndexing = true;
     index.flush();
     emit startedIndexing();
     QElapsedTimer timer;
     timer.start();
-    if (fileWatching) {
-        QStringList fileDump = fileWatcher.files();
-        for (QString const &file : fileDump) {
-            if (currentContext.isTaskCancelled()) {
-                break;
-            }
-            fileWatcher.removePath(file);
+    QStringList fileDump = fileWatcher.files();
+    for (QString const &file : fileDump) {
+        if (currentContext.isTaskCancelled()) {
+            break;
         }
+        fileWatcher.removePath(file);
     }
     std::vector<TrigramIndex::DocumentEntry> documents =
         TrigramIndex::getFileEntries(path, directoryContext);
     if (currentContext.isTaskCancelled()) {
+        isIndexing = false;
         emit finishedIndexing("interrupted");
         return;
     }
@@ -155,11 +158,13 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
         documents.begin(), documents.end(), activatedUnwrapTrigrams));
     currentTaskWatcher.waitForFinished();
     if (currentContext.isTaskCancelled()) {
+        isIndexing = false;
         emit finishedIndexing("interrupted");
         return;
     }
     index.getFilteredDocuments(std::move(documents), currentContext);
     if (currentContext.isTaskCancelled()) {
+        isIndexing = false;
         emit finishedIndexing("interrupted");
         return;
     }
@@ -170,6 +175,7 @@ void IndexDriver::indexateSync(QString const &path, bool fileWatching)
     } else {
         emit finishedIndexing("");
     }
+    isIndexing = false;
 }
 
 bool IndexDriver::validate(const SubstringOccurrence &occurrence)

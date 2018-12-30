@@ -264,6 +264,7 @@ public:
         }
     }
 
+    // returns vector of new directories
     template <typename T>
     std::vector<QString> reprocessDirectory(QString const &dirname,
                                             TaskContext<T, qsizetype> &context)
@@ -271,27 +272,23 @@ public:
         QDirIterator dirIterator(dirname, QDir::AllEntries | QDir::Hidden |
                                               QDir::NoDotAndDotDot |
                                               QDir::NoDotDot);
-        std::vector<Document> documents;
-        std::vector<QString> changedFiles;
+        std::vector<QString> changedDirectories;
         while (dirIterator.hasNext()) {
             dirIterator.next();
             QString fullpath =
                 QFileInfo(dirIterator.filePath()).absoluteFilePath();
             if (!dirIterator.fileInfo().isDir()) {
                 DocumentEntry newDocument{fullpath, {}};
-                if (this->documents.count(fullpath) == 0) {
-                    unwrapTrigrams(newDocument.first, newDocument.second,
-                                   context);
-                    if (newDocument.second.size() > 0) {
-                        this->documents.insert(std::move(newDocument));
-                        changedFiles.push_back(fullpath);
-                    }
+                this->documents.erase(fullpath);
+                unwrapTrigrams(newDocument.first, newDocument.second, context);
+                if (newDocument.second.size() > 0) {
+                    this->documents.insert(std::move(newDocument));
                 }
             } else {
-                changedFiles.push_back(fullpath);
+                changedDirectories.push_back(fullpath);
             }
         }
-        return changedFiles;
+        return changedDirectories;
     }
 
     friend class IndexDriver;

@@ -56,6 +56,7 @@ private:
     TrigramIndex index;
     std::atomic_size_t transactionalId;
     QFileSystemWatcher fileWatcher;
+    bool isIndexing;
 };
 
 #endif // INDEXWORKER_H
