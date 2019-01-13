@@ -11,8 +11,12 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     MainWindow mainWin;
-    qSetMessagePattern("[%{type}] %{appname} %{if-debug} "
-                       "(%{file}:%{line})%{endif} - %{message}");
+    qSetMessagePattern("[%{if-debug}DEBUG%{endif}%{if-info}INFO%{endif}%{if-"
+                       "warning}WARNING%{endif}%{if-"
+                       "critical}CRITICAL%{endif}%{if-"
+                       "fatal}FATAL%{endif}"
+                       "]%{if-debug} "
+                       "(%{file}:%{line})%{endif} %{message}");
     mainWin.show();
     return app.exec();
 }

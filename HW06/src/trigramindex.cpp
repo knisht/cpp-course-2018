@@ -19,7 +19,7 @@ TrigramIndex::IndexMap const &TrigramIndex::getDocuments() const
     return documents;
 }
 
-bool TrigramIndex::has_zero(char *buf, size_t expected_buf_size)
+bool TrigramIndex::hasZero(char *buf, size_t expected_buf_size)
 {
     return strlen(buf) < expected_buf_size;
 }

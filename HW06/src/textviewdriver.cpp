@@ -54,10 +54,8 @@ void TextViewDriver::renderText()
                                static_cast<int>(wordSize),
                            QTextCursor::KeepAnchor);
         cursor.setCharFormat(fmt);
-        //                        QApplication::processEvents();
     }
     QTextEdit::setTextCursor(cursor);
-    //    QApplication::processEvents();
     occurrenceIndex = 0;
     highlightCurrentOccurrence();
 }

@@ -43,8 +43,8 @@ private slots:
     void processChangedDirectory(const QString &);
 
 private:
-    void indexateSync(QString const &path, bool fileWatching);
-    void findSubstringSync(QString const &substring, bool parallelSearch);
+    void indexateImpl(QString const &path, bool fileWatching);
+    void findSubstringImpl(QString const &substring, bool parallelSearch);
 
     template <typename... Args>
     void nothing(Args...)

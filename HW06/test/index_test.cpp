@@ -79,19 +79,21 @@ void resort(std::vector<T> &a, std::vector<T> &b)
     sort(b.begin(), b.end());
 }
 
+void reparse(TrigramIndex &index, QString const &file)
+{
+    index.reprocessFile(file, qsizetypeContext);
+}
+
 void rescan(TrigramIndex &index, QString const &directory)
 {
     for (QString const &newFilename :
          index.reprocessDirectory(directory, qsizetypeContext)) {
         if (QFileInfo(newFilename).isDir()) {
             rescan(index, newFilename);
+        } else {
+            reparse(index, newFilename);
         }
     }
-}
-
-void reparse(TrigramIndex &index, QString const &file)
-{
-    index.reprocessFile(file, qsizetypeContext);
 }
 
 } // namespace

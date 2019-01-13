@@ -25,6 +25,7 @@ void IndexDriver::processChangedFile(const QString &path)
     TaskContext<IndexDriver, qsizetype> context{
         transactionalId, this, &IndexDriver::nothing<qsizetype>};
     index.reprocessFile(path, context);
+    fileWatcher.addPath(path);
 }
 
 void IndexDriver::processChangedDirectory(const QString &path)
@@ -35,12 +36,14 @@ void IndexDriver::processChangedDirectory(const QString &path)
     qInfo() << "Directory changes detected in" << path;
     TaskContext<IndexDriver, qsizetype> context{
         transactionalId, this, &IndexDriver::nothing<qsizetype>};
-    for (QString const &newFilename : index.reprocessDirectory(path, context)) {
-        if (QFileInfo(newFilename).isDir()) {
-            if (!fileWatcher.directories().contains(newFilename)) {
-                processChangedDirectory(newFilename);
+    for (QString const &newEntry : index.reprocessDirectory(path, context)) {
+        if (QFileInfo(newEntry).isDir()) {
+            if (!fileWatcher.directories().contains(newEntry)) {
+                processChangedDirectory(newEntry);
+                fileWatcher.addPath(newEntry);
             }
-            fileWatcher.addPath(newFilename);
+        } else if (QFileInfo(newEntry).isFile()) {
+            processChangedFile(newEntry);
         }
     }
 }
@@ -58,11 +61,11 @@ void IndexDriver::findSubstringAsync(QString const &substring,
 {
     interrupt();
     QFuture<void> indexFuture = QtConcurrent::run(
-        this, &IndexDriver::findSubstringSync, substring, parallelSearch);
+        this, &IndexDriver::findSubstringImpl, substring, parallelSearch);
     globalTaskWatcher.setFuture(indexFuture);
 }
 
-void IndexDriver::findSubstringSync(QString const &substring,
+void IndexDriver::findSubstringImpl(QString const &substring,
                                     bool parallelSearch)
 {
     size_t validTransactionalId = ++transactionalId;
@@ -116,11 +119,11 @@ void IndexDriver::indexateAsync(QString const &path, bool fileWatching)
 {
     interrupt();
     QFuture<void> indexFuture =
-        QtConcurrent::run(this, &IndexDriver::indexateSync, path, fileWatching);
+        QtConcurrent::run(this, &IndexDriver::indexateImpl, path, fileWatching);
     globalTaskWatcher.setFuture(indexFuture);
 }
 
-void IndexDriver::indexateSync(QString const &path, bool fileWatching)
+void IndexDriver::indexateImpl(QString const &path, bool fileWatching)
 {
     size_t validTransactionalId = ++transactionalId;
     TaskContext<IndexDriver, qsizetype> currentContext{

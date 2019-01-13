@@ -36,19 +36,16 @@ public:
             root, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot,
             QDirIterator::Subdirectories);
         std::vector<DocumentEntry> documents;
-        std::invoke(directoryHandler.callOnSuccess, directoryHandler.caller,
-                    QFileInfo(root).absoluteFilePath());
+        directoryHandler.apply(QFileInfo(root).absoluteFilePath());
         while (dirIterator.hasNext() && !directoryHandler.isTaskCancelled()) {
             dirIterator.next();
             if (dirIterator.fileInfo().isFile()) {
                 QString path =
                     QFileInfo(dirIterator.filePath()).absoluteFilePath();
                 documents.push_back({path, {}});
-            } else {
-                std::invoke(
-                    directoryHandler.callOnSuccess, directoryHandler.caller,
-                    QFileInfo(dirIterator.filePath()).absoluteFilePath());
             }
+            directoryHandler.apply(
+                QFileInfo(dirIterator.filePath()).absoluteFilePath());
         }
         return documents;
     }
@@ -107,8 +104,7 @@ public:
                                TaskContext<T, QString const &, size_t> &context)
     {
         if (occurrenceExist(filename, searcher, context)) {
-            std::invoke(context.callOnSuccess, context.caller, filename,
-                        context.transactionalId);
+            context.apply(filename, context.transactionalId);
         }
     }
 
@@ -156,15 +152,15 @@ public:
                          TaskContext<T, QString const &, size_t> &context)
     {
         bool exist = false;
-        auto checker = [&](std::string::const_iterator &begin [[gnu::unused]],
-                           std::string::const_iterator &end
-                           [[gnu::unused]]) -> bool {
+        auto checker =
+            [&exist](std::string::const_iterator &begin [[gnu::unused]],
+                     std::string::const_iterator &end [[gnu::unused]]) -> bool {
             exist = true;
             return false;
         };
-        auto finish = [&](std::string::const_iterator &begin [[gnu::unused]],
-                          std::string::const_iterator const &end
-                          [[gnu::unused]]) -> bool { return true; };
+        auto finish = [](std::string::const_iterator &begin [[gnu::unused]],
+                         std::string::const_iterator const &end
+                         [[gnu::unused]]) -> bool { return true; };
         processSubstringOccurrencesInFile(filename, searcher, checker, finish,
                                           context);
         return exist;
@@ -187,7 +183,7 @@ public:
 
         // NOTE: files with filesize <= 2 are ignored
         if (fileSize <= 2) {
-            std::invoke(context.callOnSuccess, context.caller, 1);
+            context.apply(1);
             return;
         }
         qsizetype blockSize = qMin(fileSize, BUF_SIZE);
@@ -202,7 +198,7 @@ public:
         while (fileSize > 0 && !context.isTaskCancelled()) {
             qint64 receivedBytes =
                 fileInstance.read(&bytes[0], static_cast<qint64>(blockSize));
-            if (has_zero(&bytes[0], static_cast<size_t>(receivedBytes))) {
+            if (hasZero(&bytes[0], static_cast<size_t>(receivedBytes))) {
                 foundTrigrams.clear();
                 break;
             }
@@ -235,7 +231,7 @@ public:
             consumer.push_back(t);
         }
         Document::sort(consumer);
-        std::invoke(context.callOnSuccess, context.caller, 1);
+        context.apply(1);
     }
 
     template <typename T>
@@ -245,7 +241,7 @@ public:
         for (size_t i = 0; i < candidateDocuments.size(); ++i) {
             if (candidateDocuments[i].second.size() > 0) {
                 this->documents.insert(std::move(candidateDocuments[i]));
-                std::invoke(context.callOnSuccess, context.caller, 1);
+                context.apply(1);
             }
         }
     }
@@ -254,13 +250,11 @@ public:
     void reprocessFile(QString const &filename,
                        TaskContext<T, qsizetype> &context)
     {
-        if (documents.count(filename) != 0) {
-            IndexMap::iterator it = documents.find(filename);
-            it->second.clear();
-            unwrapTrigrams(it->first, it->second, context);
-            if (it->second.size() == 0) {
-                documents.erase(it);
-            }
+        documents[filename] = {};
+        IndexMap::iterator it = documents.find(filename);
+        unwrapTrigrams(it->first, it->second, context);
+        if (it->second.size() == 0) {
+            documents.erase(it);
         }
     }
 
@@ -272,23 +266,18 @@ public:
         QDirIterator dirIterator(dirname, QDir::AllEntries | QDir::Hidden |
                                               QDir::NoDotAndDotDot |
                                               QDir::NoDotDot);
-        std::vector<QString> changedDirectories;
+        std::vector<QString> changedEntries;
         while (dirIterator.hasNext()) {
             dirIterator.next();
             QString fullpath =
                 QFileInfo(dirIterator.filePath()).absoluteFilePath();
-            if (!dirIterator.fileInfo().isDir()) {
-                DocumentEntry newDocument{fullpath, {}};
-                this->documents.erase(fullpath);
-                unwrapTrigrams(newDocument.first, newDocument.second, context);
-                if (newDocument.second.size() > 0) {
-                    this->documents.insert(std::move(newDocument));
-                }
-            } else {
-                changedDirectories.push_back(fullpath);
+            if (dirIterator.fileInfo().isDir() ||
+                (dirIterator.fileInfo().isFile() &&
+                 documents.count(fullpath) == 0)) {
+                changedEntries.push_back(fullpath);
             }
         }
-        return changedDirectories;
+        return changedEntries;
     }
 
     friend class IndexDriver;
@@ -302,7 +291,7 @@ private:
     template <typename T, typename ProgressFunction, typename FinishFunction>
     static void processSubstringOccurrencesInFile(
         QString const &filename, Searcher const &patternSearcher,
-        ProgressFunction progress, FinishFunction finish,
+        ProgressFunction &&progress, FinishFunction &&finish,
         TaskContext<T, QString const &, size_t> &context)
     {
         QFile fileInstance(filename);
@@ -338,11 +327,11 @@ private:
     }
 
     template <typename T, typename ProgressFunction, typename FinishFunction>
-    static bool processBuffer(std::string::const_iterator begin,
-                              std::string::const_iterator end,
-                              Searcher const &searcher,
-                              ProgressFunction process, FinishFunction finish,
-                              TaskContext<T, QString const &, size_t> context)
+    static bool
+    processBuffer(std::string::const_iterator begin,
+                  std::string::const_iterator end, Searcher const &searcher,
+                  ProgressFunction &&process, FinishFunction &&finish,
+                  TaskContext<T, QString const &, size_t> context)
     {
         std::string::const_iterator lastOccurrencePosition = begin;
         std::string::const_iterator currentOccurrencePosition =
@@ -361,7 +350,7 @@ private:
                       currentOccurrencePosition - searcher.patternSize);
     }
 
-    static bool has_zero(char *buf, size_t expected_buf_size);
+    static bool hasZero(char *buf, size_t expected_buf_size);
 
     static void collectUnicodeSymbols(std::string::const_iterator &begin,
                                       std::string::const_iterator const &end,
