@@ -21,6 +21,13 @@ IndexDriver::~IndexDriver() { interrupt(); }
 
 void IndexDriver::processChangedFile(const QString &path)
 {
+    if (isIndexing) {
+        QTimer *timer = new QTimer(this);
+        connect(timer, SIGNAL(timeout()), this,
+                SLOT(indexateAsync(QFileInfo(path).filePath(), true)));
+        timer->start(36000000);
+        return;
+    }
     qInfo() << "File changes detected in" << path;
     TaskContext<IndexDriver, qsizetype> context{
         transactionalId, this, &IndexDriver::nothing<qsizetype>};
@@ -31,6 +38,10 @@ void IndexDriver::processChangedFile(const QString &path)
 void IndexDriver::processChangedDirectory(const QString &path)
 {
     if (isIndexing) {
+        QTimer *timer = new QTimer(this);
+        connect(timer, SIGNAL(timeout()), this,
+                SLOT(indexateAsync(path, true)));
+        timer->start(36000000);
         return;
     }
     qInfo() << "Directory changes detected in" << path;
